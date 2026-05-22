@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="he">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dragon Quest Runner</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #1a0a00;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: 'Press Start 2P', monospace;
+    gap: 20px;
+    background-image:
+      radial-gradient(ellipse at top, #2a1800 0%, #1a0a00 60%);
+  }
+
+  h1 {
+    font-size: 13px;
+    color: #ffd700;
+    text-shadow: 2px 2px 0 #aa6600, 0 0 30px #ffaa00;
+    letter-spacing: 3px;
+  }
+
+  h2 {
+    font-size: 8px;
+    color: #cc9900;
+    letter-spacing: 5px;
+    margin-top: -12px;
+  }
+
+  /* ── SCENE ── */
+  .scene {
+    width: 620px;
+    height: 220px;
+    position: relative;
+    overflow: hidden;
+    border: 3px solid #aa7700;
+    box-shadow: 0 0 0 3px #553300, 0 0 40px #ff880044;
+    background: linear-gradient(
+      180deg,
+      #1a1a4a 0%,
+      #2a2a6a 30%,
+      #1a3a1a 60%,
+      #2a4a2a 80%,
+      #3a5a1a 100%
+    );
+  }
+
+  /* Sky stars */
+  .sky {
+    position: absolute;
+    inset: 0; bottom: 80px;
+    background-image:
+      radial-gradient(1px 1px at 8%  15%, #fff  0%, transparent 100%),
+      radial-gradient(1px 1px at 22% 8%,  #fff  0%, transparent 100%),
+      radial-gradient(1px 1px at 38% 20%, #fff8 0%, transparent 100%),
+      radial-gradient(1px 1px at 55% 5%,  #fff  0%, transparent 100%),
+      radial-gradient(1px 1px at 68% 18%, #fff8 0%, transparent 100%),
+      radial-gradient(1px 1px at 82% 10%, #fff  0%, transparent 100%),
+      radial-gradient(1px 1px at 91% 22%, #fff8 0%, transparent 100%),
+      radial-gradient(2px 2px at 15% 30%, #ffdd88 0%, transparent 100%),
+      radial-gradient(2px 2px at 75% 25%, #ffdd88 0%, transparent 100%);
+  }
+
+  /* Moon */
+  .moon {
+    position: absolute;
+    top: 15px; right: 60px;
+    width: 32px; height: 32px;
+    background: #ffeebb;
+    border-radius: 50%;
+    box-shadow: 0 0 20px #ffcc6688;
+  }
+
+  /* Dragon Quest style mountains / castle silhouette */
+  .bg-castle {
+    position: absolute;
+    bottom: 70px; right: 30px;
+    width: 120px; height: 90px;
+    display: flex;
+    align-items: flex-end;
+    gap: 0;
+  }
+
+  .castle-tower {
+    background: #1a1a3a;
+    position: relative;
+  }
+
+  /* Scrolling ground */
+  .ground {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 75px;
+    background:
+      linear-gradient(180deg, #2a4a00 0%, #1e3800 40%, #2a3000 100%);
+    border-top: 3px solid #5a8a00;
+  }
+
+  /* DQ-style tile pattern on ground */
+  .ground-tiles {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 16px;
+    background: repeating-linear-gradient(
+      90deg,
+      #5a8a0088 0px, #5a8a0088 32px,
+      #4a7a0088 32px, #4a7a0088 64px
+    );
+    border-bottom: 1px solid #4a7a0044;
+    animation: tile-scroll 0.5s linear infinite;
+  }
+
+  @keyframes tile-scroll {
+    from { background-position: 0 0; }
+    to   { background-position: -64px 0; }
+  }
+
+  /* Grass tufts on ground */
+  .grass-row {
+    position: absolute;
+    top: -6px; left: 0; right: 0;
+    height: 10px;
+    background: repeating-linear-gradient(
+      90deg,
+      transparent 0px, transparent 14px,
+      #6aaa00 14px, #6aaa00 18px,
+      #88cc00 18px, #88cc00 20px,
+      transparent 20px, transparent 40px
+    );
+    animation: grass-scroll 0.5s linear infinite;
+  }
+
+  @keyframes grass-scroll {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-40px); }
+  }
+
+  /* Slime enemy in background */
+  .slime-bg {
+    position: absolute;
+    bottom: 76px;
+    right: -60px;
+    animation: slime-walk 6s linear infinite;
+  }
+
+  @keyframes slime-walk {
+    from { right: -80px; }
+    to   { right: 650px; }
+  }
+
+  /* ── CANVAS ── */
+  #runner {
+    position: absolute;
+    bottom: 72px;
+    left: 50px;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    width: 128px;
+    height: 128px;
+  }
+
+  /* ── UI PANEL ── */
+  .ui-panel {
+    background: #1a0a00;
+    border: 3px solid #aa7700;
+    box-shadow: 0 0 0 2px #553300;
+    padding: 14px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    min-width: 400px;
+  }
+
+  .status-row {
+    display: flex;
+    gap: 30px;
+    font-size: 8px;
+    color: #ffd700;
+  }
+
+  .stat { color: #ffaa00; }
+  .stat span { color: #ffffff; }
+
+  /* ── CONTROLS ── */
+  .controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-top: 4px;
+  }
+
+  .btn {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    padding: 12px 18px;
+    border: 2px solid #aa7700;
+    background: #2a1500;
+    cursor: pointer;
+    color: #ffd700;
+    box-shadow: 2px 2px 0 #553300, inset 0 0 10px #00000044;
+    transition: all 0.05s;
+    letter-spacing: 1px;
+  }
+
+  .btn:hover {
+    background: #3a2000;
+    box-shadow: 3px 3px 0 #553300;
+  }
+
+  .btn:active, .btn.active-btn {
+    background: #ffd700;
+    color: #1a0a00;
+    transform: translate(2px, 2px);
+    box-shadow: 0 0 0 #553300;
+  }
+
+  .speed-label {
+    font-size: 9px;
+    color: #ffd700;
+    text-align: center;
+    letter-spacing: 2px;
+    text-shadow: 1px 1px 0 #aa6600;
+  }
+
+  /* DQ-style window border corners */
+  .corner {
+    position: absolute;
+    width: 8px; height: 8px;
+    background: #ffd700;
+  }
+  .corner.tl { top: -1px; left: -1px; }
+  .corner.tr { top: -1px; right: -1px; }
+  .corner.bl { bottom: -1px; left: -1px; }
+  .corner.br { bottom: -1px; right: -1px; }
+
+  /* Dust particles */
+  .dust {
+    position: absolute;
+    width: 4px; height: 4px;
+    background: #8a6a00;
+    opacity: 0;
+    animation: dust-fly 0.5s ease-out forwards;
+  }
+  @keyframes dust-fly {
+    0%   { opacity: 0.8; transform: translate(0,0); }
+    100% { opacity: 0;   transform: translate(-30px, -10px); }
+  }
+</style>
+</head>
+<body>
+
+<h1>✦ DRAGON QUEST ✦</h1>
+<h2>- HERO'S JOURNEY -</h2>
+
+<div class="scene" id="scene">
+  <div class="sky"></div>
+  <div class="moon"></div>
+
+  <!-- Background castle silhouette (CSS drawn) -->
+  <div style="position:absolute;bottom:68px;right:20px;display:flex;align-items:flex-end;gap:0">
+    <div style="width:8px;height:30px;background:#0a0a22"></div>
+    <div style="width:4px;height:38px;background:#0a0a22"></div>
+    <div style="width:8px;height:30px;background:#0a0a22"></div>
+    <div style="width:4px;height:10px;background:#0a0a22"></div>
+    <div style="width:20px;height:50px;background:#0a0a22"></div>
+    <div style="width:4px;height:10px;background:#0a0a22"></div>
+    <div style="width:8px;height:40px;background:#0a0a22"></div>
+    <div style="width:4px;height:48px;background:#0a0a22"></div>
+    <div style="width:8px;height:40px;background:#0a0a22"></div>
+  </div>
+
+  <!-- Slime enemy walking in background -->
+  <canvas id="slime-canvas" width="24" height="20"
+    style="position:absolute;bottom:76px;image-rendering:pixelated;width:48px;height:40px;"
+  ></canvas>
+
+  <!-- Hero canvas -->
+  <canvas id="runner" width="32" height="32"></canvas>
+
+  <div class="ground">
+    <div class="grass-row"></div>
+    <div class="ground-tiles"></div>
+  </div>
+
+  <div id="dust-container" style="position:absolute;inset:0;pointer-events:none;"></div>
+</div>
+
+<!-- DQ-style status window -->
+<div class="ui-panel" style="position:relative;">
+  <div class="corner tl"></div>
+  <div class="corner tr"></div>
+  <div class="corner bl"></div>
+  <div class="corner br"></div>
+  <div class="status-row">
+    <div class="stat">HERO <span>ERDRICK</span></div>
+    <div class="stat">LV <span>12</span></div>
+    <div class="stat">HP <span id="hp-val">255</span>/255</div>
+    <div class="stat">SPD <span id="spd-val">5.0</span> km/h</div>
+    <div class="stat">BT <span id="bt-status" style="color:#553300">OFF</span></div>
+  </div>
+  <div class="speed-label" id="speed-label">► WALKING...</div>
+  <div class="controls">
+    <button class="btn" onclick="setSpeed('slow')">▼ WALK</button>
+    <button class="btn active-btn" id="btn-normal" onclick="setSpeed('normal')">► RUN</button>
+    <button class="btn" onclick="setSpeed('fast')">▲ DASH!</button>
+  </div>
+</div>
+
+<script>
+// ───────────────────────────────────────────
+// DRAGON QUEST HERO — Pixel frames 32×32
+// ───────────────────────────────────────────
+const canvas = document.getElementById('runner');
+const ctx = canvas.getContext('2d');
+const PX = 1; // 1 canvas unit = displayed as 4px via CSS
+
+// DQ color palette
+const _ = null;
+const SK = '#f8c8a0'; // skin
+const HR = '#c86000'; // hair orange/brown  
+const EY = '#000000'; // eye
+const BL = '#3860d8'; // blue armor
+const BD = '#2040a8'; // armor dark
+const WT = '#e8e8e8'; // white/silver
+const YL = '#f8d800'; // yellow gold trim
+const RD = '#d82020'; // red cape
+const RK = '#a01010'; // red dark
+const BN = '#884420'; // brown boots
+const BK = '#553010'; // boots dark
+const GR = '#888888'; // gray
+
+// 4 run frames 32 cols x 32 rows — DQ Hero (orange hair, blue armor, red cape)
+const FRAMES = [
+// Frame 0 — left leg forward
+[
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,HR,HR,HR,HR,HR,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,HR,HR,HR,HR,HR,HR,HR,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,HR,SK,SK,SK,SK,SK,SK,HR,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,HR,SK,EY,SK,SK,EY,SK,HR,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,HR,SK,SK,SK,SK,SK,SK,HR,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,HR,YL,YL,YL,YL,HR,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ // body (rows 9-14)
+ [_,_,_,_,_,_,_,_,_,RD,BL,BL,BL,BL,BL,BL,BL,BL,RD,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,RD,RD,BD,BL,BL,BL,BL,BL,BD,RD,RD,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,RD,SK,YL,BL,BL,BL,BL,BL,YL,SK,RD,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,RK,RD,SK,BL,BL,BL,BL,BL,BL,BL,SK,RD,RK,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,RK,_,_,YL,BL,BL,BL,BL,BL,YL,_,_,RK,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,BL,BL,BL,BL,BL,BL,BL,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ // legs (rows 15-23)
+ [_,_,_,_,_,_,_,_,_,_,BL,BL,BD,BD,BD,BD,BL,BL,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,BN,BN,BL,_,_,_,_,BL,BN,BN,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,BN,BN,BL,_,_,_,_,_,_,BL,BN,BN,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,BN,BK,_,_,_,_,_,_,_,_,BK,BN,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,BN,BK,_,_,_,_,_,_,_,_,_,_,BK,BN,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,BN,BN,_,_,_,_,_,_,_,_,_,_,_,_,BN,BN,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,BK,BK,BK,_,_,_,_,_,_,_,_,_,_,_,BK,BK,BK,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+],
+// Frame 1 — mid stride
+[
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,HR,HR,HR,HR,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,HR,HR,HR,HR,HR,HR,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,HR,SK,SK,SK,SK,SK,SK,HR,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,HR,SK,EY,SK,SK,EY,SK,HR,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,HR,SK,SK,SK,SK,SK,SK,HR,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,HR,YL,YL,YL,YL,HR,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,RD,BL,BL,BL,BL,BL,BL,BL,BL,RD,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,RD,RD,BD,BL,BL,BL,BL,BL,BD,RD,RD,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,RD,SK,YL,BL,BL,BL,BL,BL,YL,SK,RD,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,RK,RD,SK,BL,BL,BL,BL,BL,BL,BL,SK,RD,RK,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,RK,_,_,YL,BL,BL,BL,BL,BL,YL,_,_,RK,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,BL,BL,BL,BL,BL,BL,BL,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,BL,BL,BD,BD,BD,BD,BL,BL,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,BN,BL,_,_,_,_,BL,BN,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,BN,BN,_,_,_,_,_,_,BN,BN,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,BN,BN,_,_,_,_,_,_,_,_,BN,BN,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,BK,BN,_,_,_,_,_,_,_,_,BN,BK,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,BK,BK,_,_,_,_,_,_,_,_,_,_,BK,BK,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,BK,BK,_,_,_,_,_,_,_,_,_,_,_,_,BK,BK,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+],
+// Frame 2 — right leg forward (mirror of frame 0)
+[
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,HR,HR,HR,HR,HR,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,HR,HR,HR,HR,HR,HR,HR,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,HR,SK,SK,SK,SK,SK,SK,HR,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,HR,SK,EY,SK,SK,EY,SK,HR,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,HR,SK,SK,SK,SK,SK,SK,HR,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,HR,YL,YL,YL,YL,HR,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,RD,BL,BL,BL,BL,BL,BL,BL,BL,RD,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,RD,RD,BD,BL,BL,BL,BL,BL,BD,RD,RD,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,RD,SK,YL,BL,BL,BL,BL,BL,YL,SK,RD,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,RK,RD,SK,BL,BL,BL,BL,BL,BL,BL,SK,RD,RK,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,RK,_,_,YL,BL,BL,BL,BL,BL,YL,_,_,RK,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,BL,BL,BL,BL,BL,BL,BL,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,BL,BL,BD,BD,BD,BD,BL,BL,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,BN,BL,_,_,_,_,BL,BN,BN,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,BN,BN,_,_,_,_,_,_,BN,BN,BN,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,BN,BN,_,_,_,_,_,_,_,BN,BN,BN,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,BK,BN,_,_,_,_,_,_,_,BN,BK,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,BK,BK,_,_,_,_,_,_,_,_,_,BK,BK,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,BK,BK,BK,_,_,_,_,_,_,_,_,_,_,BK,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+],
+// Frame 3 — mid stride back
+[
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,HR,HR,HR,HR,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,HR,HR,HR,HR,HR,HR,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,HR,SK,SK,SK,SK,SK,SK,HR,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,HR,SK,EY,SK,SK,EY,SK,HR,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,HR,SK,SK,SK,SK,SK,SK,HR,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,HR,YL,YL,YL,YL,HR,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,RD,BL,BL,BL,BL,BL,BL,BL,BL,RD,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,RD,RD,BD,BL,BL,BL,BL,BL,BD,RD,RD,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,RD,SK,YL,BL,BL,BL,BL,BL,YL,SK,RD,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,RK,RD,SK,BL,BL,BL,BL,BL,BL,BL,SK,RD,RK,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,RK,_,_,YL,BL,BL,BL,BL,BL,YL,_,_,RK,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,BL,BL,BL,BL,BL,BL,BL,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,BL,BL,BD,BD,BD,BD,BL,BL,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,BN,BL,_,_,_,_,BL,BN,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,BN,BN,_,_,_,_,_,_,BN,BN,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,BN,BN,_,_,_,_,_,_,_,_,BN,BN,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,BK,BN,_,_,_,_,_,_,_,_,BN,BK,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,BK,BK,_,_,_,_,_,_,_,_,_,_,BK,BK,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,BK,BK,_,_,_,_,_,_,_,_,_,_,_,_,BK,BK,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+ [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+],
+];
+
+function drawFrame(f) {
+  ctx.clearRect(0, 0, 32, 32);
+  const grid = FRAMES[f];
+  for (let r = 0; r < 32; r++) {
+    for (let c = 0; c < 32; c++) {
+      const color = grid[r] && grid[r][c];
+      if (color) {
+        ctx.fillStyle = color;
+        ctx.fillRect(c, r, 1, 1);
+      }
+    }
+  }
+}
+
+// ── Slime ──
+const slimeCanvas = document.getElementById('slime-canvas');
+const sctx = slimeCanvas.getContext('2d');
+const SL = '#1890e8'; // slime blue
+const SD = '#0060b0'; // slime dark
+const SW = '#ffffff'; // slime white eye
+const SE = '#000000'; // slime eye pupil
+
+const SLIME_FRAMES = [
+  // frame A — normal
+  [
+    [_,_,SL,SL,SL,SL,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+    [_,SL,SL,SL,SL,SL,SL,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+    [SL,SL,SW,SE,SL,SW,SE,SL,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+    [SL,SL,SL,SL,SL,SL,SL,SL,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+    [SD,SD,SD,SD,SD,SD,SD,SD,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+  ],
+  // frame B — squished
+  [
+    [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+    [_,SL,SL,SL,SL,SL,SL,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+    [SL,SL,SW,SE,SL,SW,SE,SL,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+    [SL,SL,SL,SL,SL,SL,SL,SL,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+    [SD,SD,SD,SD,SD,SD,SD,SD,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+  ],
+];
+
+let slimeFrame = 0;
+let slimeX = 480;
+
+function drawSlime(f) {
+  sctx.clearRect(0, 0, 24, 20);
+  const grid = SLIME_FRAMES[f];
+  for (let r = 0; r < grid.length; r++) {
+    for (let c = 0; c < 8; c++) {
+      if (grid[r][c]) {
+        sctx.fillStyle = grid[r][c];
+        sctx.fillRect(c, r + (f === 0 ? 0 : 1), 1, 1);
+      }
+    }
+  }
+}
+
+// ── Speed config (manual buttons) ──
+const SPEEDS = {
+  slow:   { tpf: 22, tileDur: '1s',    label: '▼ WALKING...', spd: '3.0',  slimePx: 0.4 },
+  normal: { tpf: 9,  tileDur: '0.5s',  label: '► RUNNING!',   spd: '8.0',  slimePx: 1.2 },
+  fast:   { tpf: 3,  tileDur: '0.15s', label: '▲ DASHING!!',  spd: '14.0', slimePx: 3.0 },
+};
+
+// Live animation params — driven by treadmill km/h OR manual buttons
+let currentTpf     = 9;
+let currentSlimePx = 1.2;
+
+let frame = 0, tick = 0, slimeTick = 0, dustTick = 0;
+
+// ── Map real km/h → animation params (smooth, continuous) ─────────────────
+// Uses exponential curve so the difference between 2 and 6 km/h is felt as
+// much as the difference between 8 and 16 km/h.
+function kmhToParams(kmh) {
+  if (kmh < 0.3) {
+    return { tpf: 999, tileDur: '4s', slimePx: 0.15,
+             label: '— IDLE —', spd: '0.0' };
+  }
+  // t: 0 at 1 km/h → 1 at 16 km/h
+  const t = Math.max(0, Math.min(1, (kmh - 1) / 15));
+  const tpf     = Math.max(2, Math.round(22 * Math.pow(0.09, t)));  // 22 → 2
+  const tileS   = Math.max(0.07, 1.0  * Math.pow(0.08, t));         // 1.0s → 0.07s
+  const slimePx = 0.3 + 2.7 * t;                                    // 0.3 → 3.0
+  const label   = kmh < 4 ? '▼ WALKING...' : kmh < 9 ? '► RUNNING!' : '▲ DASHING!!';
+  return { tpf, tileDur: tileS.toFixed(2) + 's', slimePx, label, spd: kmh.toFixed(1) };
+}
+
+function applyParams({ tpf, tileDur, slimePx, label, spd }) {
+  currentTpf     = tpf;
+  currentSlimePx = slimePx;
+  document.getElementById('speed-label').textContent = label;
+  document.getElementById('spd-val').textContent = spd;
+  document.querySelector('.ground-tiles').style.animationDuration = tileDur;
+  document.querySelector('.grass-row').style.animationDuration    = tileDur;
+}
+
+// Manual button handler (used when no treadmill connected)
+function setSpeed(s) {
+  const cfg = SPEEDS[s];
+  applyParams(cfg);
+  document.querySelectorAll('.btn').forEach(b => b.classList.remove('active-btn'));
+  const map = { slow: 0, normal: 1, fast: 2 };
+  document.querySelectorAll('.btn')[map[s]].classList.add('active-btn');
+}
+
+function spawnDust() {
+  if (currentTpf > 16) return; // too slow for dust
+  const fast = currentTpf < 5;
+  const dc = document.getElementById('dust-container');
+  const d  = document.createElement('div');
+  d.className = 'dust';
+  d.style.cssText = `
+    position:absolute;
+    width:${fast?8:4}px; height:${fast?8:4}px;
+    background:${fast?'#cc8800':'#886600'};
+    bottom:${52 + Math.random()*10}px;
+    left:${60 + Math.random()*20}px;
+    opacity:0;
+    animation:dust-fly ${fast?'0.3':'0.5'}s ease-out forwards;
+  `;
+  dc.appendChild(d);
+  setTimeout(() => d.remove(), 600);
+}
+
+function loop() {
+  tick++;
+
+  if (currentTpf < 999 && tick >= currentTpf) {
+    tick = 0;
+    frame = (frame + 1) % 4;
+    drawFrame(frame);
+  }
+
+  slimeTick++;
+  if (slimeTick % 20 === 0) {
+    slimeFrame = 1 - slimeFrame;
+    drawSlime(slimeFrame);
+  }
+
+  slimeX -= currentSlimePx;
+  if (slimeX < -60) slimeX = 650;
+  slimeCanvas.style.left = slimeX + 'px';
+
+  dustTick++;
+  const dustRate = currentTpf < 5 ? 4 : currentTpf < 12 ? 12 : 999;
+  if (dustTick % dustRate === 0) spawnDust();
+
+  requestAnimationFrame(loop);
+}
+
+// ── BroadcastChannel: receive live treadmill speed ─────────────────────────
+try {
+  const ch = new BroadcastChannel('treadmill-speed');
+  const btEl = document.getElementById('bt-status');
+  ch.onmessage = ({ data }) => {
+    // Mark connected on first message
+    if (btEl.style.color !== '#ffd700') {
+      btEl.textContent = 'ON';
+      btEl.style.color  = '#ffd700';
+      // Hide manual buttons — treadmill is driving
+      document.querySelector('.controls').style.opacity = '0.3';
+      document.querySelector('.controls').style.pointerEvents = 'none';
+    }
+    applyParams(kmhToParams(data.running ? data.speed : 0));
+  };
+} catch { /* BroadcastChannel not supported */ }
+
+// Init
+drawFrame(0);
+drawSlime(0);
+setSpeed('normal');
+loop();
+</script>
+</body>
+</html>
