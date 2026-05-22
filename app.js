@@ -1,4 +1,3 @@
-try {
 // ─── FTMS UUIDs & Op Codes ─────────────────────────────────────────────────
 const UUID = {
   FTMS_SERVICE:    0x1826,
@@ -575,13 +574,7 @@ const ALL_OPTIONAL_SERVICES = [
 
 // ─── Connect / Disconnect ──────────────────────────────────────────────────
 async function connect(scanAll = false) {
-  log(`Connect pressed — bluetooth: ${!!navigator.bluetooth}`, 'info');
-  if (!navigator.bluetooth) {
-    log('navigator.bluetooth is undefined — browser does not support Web Bluetooth', 'err');
-    return;
-  }
-  var avail = await navigator.bluetooth.getAvailability();
-  log('BT hardware available: ' + avail, avail ? 'ok' : 'err');
+  if (!navigator.bluetooth) return;
   const opts = scanAll
     ? { acceptAllDevices: true }
     : { filters: [{ services: [0x1826] }] };
@@ -606,9 +599,11 @@ async function connect(scanAll = false) {
     startGraph();
   } catch (err) {
     var name = err && err.name;
-    var msg  = err && err.message;
-    var code = err && err.code;
-    log('Connection failed — name=' + name + ' msg=' + msg + ' code=' + code + ' raw=' + String(err), 'err');
+    if (name === 'NotFoundError') {
+      log('No device selected', 'warn');
+    } else {
+      log('Connection failed: ' + (name || String(err)), 'err');
+    }
     setStatus('', 'Disconnected');
     btnConnect.disabled = btnScanAll.disabled = false;
   }
@@ -985,7 +980,7 @@ function stopGraph() {
 
 // ─── Init ──────────────────────────────────────────────────────────────────
 updateSpeedDisplay(targetSpeed);
-log('App loaded v2.2 — bluetooth available: ' + (!!navigator.bluetooth), 'info');
+log('App loaded v2.3 — ready.', 'info');
 log('Ready — click "Connect to Tritur" to begin.');
 if (!navigator.bluetooth) {
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -1003,9 +998,5 @@ if (!navigator.bluetooth) {
   log(isIOS
     ? 'iOS detected — use Bluefy app for Web Bluetooth support'
     : 'Web Bluetooth not available — use Chrome or Edge', 'err');
-}
-} catch(e) {
-  var el = document.getElementById('jsTest');
-  if (el) { el.textContent = 'app.js error: ' + e.message; el.style.color = '#ff0000'; }
 }
 
