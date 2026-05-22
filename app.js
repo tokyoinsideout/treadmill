@@ -148,7 +148,7 @@ function updateSpeedDisplay(speed) {
 }
 function setResponseBadge(opName, resultCode) {
   const ok   = resultCode === 0x01;
-  const text = RESULT[resultCode] ?? `0x${resultCode.toString(16)}`;
+  const text = RESULT[resultCode] !== undefined ? RESULT[resultCode] : `0x${resultCode.toString(16)}`;
   responseBadge.textContent = `${opName}: ${text}`;
   responseBadge.className   = `badge ${ok ? 'badge-ok' : resultCode === 0x05 ? 'badge-warn' : 'badge-err'}`;
 }
@@ -196,7 +196,7 @@ async function requestControl() {
   const p = waitForIndication(OP.REQUEST_CONTROL);
   await writeCtrl([OP.REQUEST_CONTROL]);
   const result = await p;
-  if (result !== 0x01) throw new Error(`Request Control failed: ${RESULT[result] ?? result}`);
+  if (result !== 0x01) throw new Error(`Request Control failed: ${RESULT[result] !== undefined ? RESULT[result] : result}`);
   log('Control granted ✓', 'ok');
 }
 
@@ -208,7 +208,7 @@ async function sendSpeed(kmh) {
   const p = waitForIndication(OP.SET_SPEED);
   await writeCtrl([OP.SET_SPEED, lo, hi]);
   const result = await p;
-  if (result !== 0x01) log(`Set speed response: ${RESULT[result] ?? result}`, 'warn');
+  if (result !== 0x01) log(`Set speed response: ${RESULT[result] !== undefined ? RESULT[result] : result}`, 'warn');
 }
 
 // START: request control → start (arms machine into Pre-Workout) → set speed (kicks belt)
@@ -224,7 +224,7 @@ async function sendStart() {
     const pStart = waitForIndication(OP.START_RESUME);
     await writeCtrl([OP.START_RESUME]);
     const rStart = await pStart;                  // [80 08 xx]
-    log(`Start response: ${RESULT[rStart] ?? `0x${rStart.toString(16)}`}`,
+    log(`Start response: ${RESULT[rStart] !== undefined ? RESULT[rStart] : `0x${rStart.toString(16)}`}`,
         rStart === 0x01 ? 'ok' : 'warn');
 
     if (rStart === 0x01) {
@@ -234,7 +234,7 @@ async function sendStart() {
       setRunning(true);
       log('Belt should be moving ✓', 'ok');
     } else {
-      log(`Start not accepted (${RESULT[rStart] ?? rStart}) — use physical Start button`, 'err');
+      log(`Start not accepted (${RESULT[rStart] !== undefined ? RESULT[rStart] : rStart}) — use physical Start button`, 'err');
     }
   } catch (e) {
     log(`Start error: ${e.message}`, 'err');
@@ -323,7 +323,7 @@ function onTreadmillData(e) {
   if (speed === null) return;
   recordSpeed(speed);
   broadcastSpeed(speed, speed > 0.1);
-  window.runnerApplyKmh?.(speed, speed > 0.1);
+  if (window.runnerApplyKmh) window.runnerApplyKmh(speed, speed > 0.1);
   updateSpeedDisplay(speed);
   if (speed > 0.1 && !isRunning) setRunning(true);
   if (speed < 0.1 &&  isRunning) setRunning(false);
@@ -365,8 +365,9 @@ function onCtrlResponse(e) {
 
   const opCode  = d[1];
   const result  = d[2];
-  const opName  = Object.entries(OP).find(([,v]) => v === opCode)?.[0] ?? `0x${opCode.toString(16)}`;
-  const resTxt  = RESULT[result] ?? `0x${result.toString(16)}`;
+  const opMatch = Object.entries(OP).find(function(e) { return e[1] === opCode; });
+  const opName  = opMatch ? opMatch[0] : `0x${opCode.toString(16)}`;
+  const resTxt  = RESULT[result] !== undefined ? RESULT[result] : `0x${result.toString(16)}`;
   log(`Response [${opName}]: ${resTxt}`, result === 0x01 ? 'ok' : 'err');
   setResponseBadge(opName, result);
 
@@ -611,7 +612,7 @@ async function connect(scanAll = false) {
 function onDisconnected() {
   log('Device disconnected', 'warn');
   broadcastSpeed(0, false);
-  window.runnerApplyKmh?.(0, false);
+  if (window.runnerApplyKmh) window.runnerApplyKmh(0, false);
   stopGraph();
   cancelRamp();
   setStatus('', 'Disconnected');
@@ -628,7 +629,7 @@ function onDisconnected() {
 }
 
 async function disconnect() {
-  device?.gatt?.disconnect();
+  if (device && device.gatt) device.gatt.disconnect();
 }
 
 // ─── Button handlers ───────────────────────────────────────────────────────
@@ -809,7 +810,7 @@ document.querySelectorAll('.preset-btn').forEach(btn => {
   }
 
   function scaleScene() {
-    const w = scene.parentElement?.clientWidth || 380;
+    const w = (scene.parentElement && scene.parentElement.clientWidth) || 380;
     const s = Math.min(1, w / 620);
     scene.style.transform = `scale(${s})`;
     scene.parentElement.style.height = (220*s) + 'px';
@@ -828,11 +829,11 @@ const runnerChannel = (() => {
   try { return new BroadcastChannel('treadmill-speed'); } catch { return null; }
 })();
 function broadcastSpeed(speed, running) {
-  runnerChannel?.postMessage({ speed, running });
+  if (runnerChannel) runnerChannel.postMessage({ speed, running });
 }
 
 // ─── Speed history graph ───────────────────────────────────────────────────
-const GRAPH_WINDOW_MS = 60_000;
+const GRAPH_WINDOW_MS = 60000;
 const GRAPH_MAX_KMH   = 16;
 const graphCard   = document.getElementById('graphCard');
 const graphCanvas = document.getElementById('speedGraph');
@@ -979,7 +980,7 @@ function stopGraph() {
 
 // ─── Init ──────────────────────────────────────────────────────────────────
 updateSpeedDisplay(targetSpeed);
-log('App loaded v1.3 — bluetooth available: ' + (!!navigator.bluetooth), 'info');
+log('App loaded v1.4 — bluetooth available: ' + (!!navigator.bluetooth), 'info');
 log('Ready — click "Connect to Tritur" to begin.');
 if (!navigator.bluetooth) {
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
