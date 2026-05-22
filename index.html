@@ -1043,7 +1043,11 @@ async function connect(scanAll = false) {
     updateSpeedDisplay(targetSpeed);
     startGraph();
   } catch (err) {
-    if (err.name !== 'NotFoundError') log(`Connection failed: ${err.message}`, 'err');
+    if (err.name === 'NotFoundError') {
+      log('Device picker closed — no device selected or none found', 'warn');
+    } else {
+      log(`Connection failed: ${err.name}: ${err.message}`, 'err');
+    }
     setStatus('', 'Disconnected');
     btnConnect.disabled = btnScanAll.disabled = false;
   }
@@ -1422,10 +1426,21 @@ function stopGraph() {
 updateSpeedDisplay(targetSpeed);
 log('Ready — click "Connect to Tritur" to begin.');
 if (!navigator.bluetooth) {
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
   browserWarn.style.display = 'block';
-  browserWarn.textContent = 'Web Bluetooth requires Chrome or Edge.';
+  if (isIOS) {
+    browserWarn.innerHTML =
+      '<strong>iOS detected:</strong> Safari and Chrome on iOS do not support Web Bluetooth ' +
+      '(Apple restricts all browsers to WebKit).<br><br>' +
+      'Use <strong><a href="https://apps.apple.com/app/bluefy-web-ble-browser/id1492822055" ' +
+      'style="color:#f59e0b">Bluefy</a></strong> — a free App Store browser with Web Bluetooth support.';
+  } else {
+    browserWarn.textContent = 'Web Bluetooth requires Chrome or Edge on desktop, or Bluefy on iOS.';
+  }
   btnConnect.disabled = btnScanAll.disabled = true;
-  log('Web Bluetooth not available — use Chrome or Edge', 'err');
+  log(isIOS
+    ? 'iOS detected — use Bluefy app for Web Bluetooth support'
+    : 'Web Bluetooth not available — use Chrome or Edge', 'err');
 }
 </script>
 </body>
