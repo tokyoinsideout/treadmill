@@ -980,7 +980,7 @@ function stopGraph() {
 
 // ─── Init ──────────────────────────────────────────────────────────────────
 updateSpeedDisplay(targetSpeed);
-log('App loaded v1.4 — bluetooth available: ' + (!!navigator.bluetooth), 'info');
+log('App loaded v1.5 — bluetooth available: ' + (!!navigator.bluetooth), 'info');
 log('Ready — click "Connect to Tritur" to begin.');
 if (!navigator.bluetooth) {
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);

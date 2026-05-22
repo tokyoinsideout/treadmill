@@ -276,8 +276,10 @@
 <header>
   <h1>Tritur Treadmill</h1>
   <p>Bluetooth Speed Control</p>
-  <p style="font-size:0.7rem;color:#333;margin-top:0.25rem">v1.4</p>
+  <p style="font-size:0.7rem;color:#333;margin-top:0.25rem">v1.5</p>
+  <p id="jsTest" style="font-size:0.7rem;color:#ef4444;margin-top:0.25rem">JS NOT RUNNING</p>
 </header>
+<script>document.getElementById('jsTest').textContent = 'JS OK';</script>
 
 <div id="browserWarning"></div>
 
@@ -447,6 +449,6 @@
   <div id="log"></div>
 </div>
 
-<script src="app.js"></script>
+<script src="app.js?v=1.5"></script>
 </body>
 </html>
