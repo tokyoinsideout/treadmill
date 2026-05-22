@@ -1,3 +1,4 @@
+try {
 // ─── FTMS UUIDs & Op Codes ─────────────────────────────────────────────────
 const UUID = {
   FTMS_SERVICE:    0x1826,
@@ -980,7 +981,7 @@ function stopGraph() {
 
 // ─── Init ──────────────────────────────────────────────────────────────────
 updateSpeedDisplay(targetSpeed);
-log('App loaded v1.5 — bluetooth available: ' + (!!navigator.bluetooth), 'info');
+log('App loaded v1.6 — bluetooth available: ' + (!!navigator.bluetooth), 'info');
 log('Ready — click "Connect to Tritur" to begin.');
 if (!navigator.bluetooth) {
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -998,5 +999,9 @@ if (!navigator.bluetooth) {
   log(isIOS
     ? 'iOS detected — use Bluefy app for Web Bluetooth support'
     : 'Web Bluetooth not available — use Chrome or Edge', 'err');
+}
+} catch(e) {
+  var el = document.getElementById('jsTest');
+  if (el) { el.textContent = 'app.js error: ' + e.message; el.style.color = '#ff0000'; }
 }
 
