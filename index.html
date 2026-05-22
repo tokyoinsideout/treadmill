@@ -276,7 +276,7 @@
 <header>
   <h1>Tritur Treadmill</h1>
   <p>Bluetooth Speed Control</p>
-  <p style="font-size:0.7rem;color:#333;margin-top:0.25rem">v1.1</p>
+  <p style="font-size:0.7rem;color:#333;margin-top:0.25rem">v1.2</p>
 </header>
 
 <div id="browserWarning"></div>
@@ -1012,7 +1012,11 @@ const ALL_OPTIONAL_SERVICES = [
 
 // ─── Connect / Disconnect ──────────────────────────────────────────────────
 async function connect(scanAll = false) {
-  if (!navigator.bluetooth) return;
+  log(`Connect pressed — bluetooth: ${!!navigator.bluetooth}`, 'info');
+  if (!navigator.bluetooth) {
+    log('navigator.bluetooth is undefined — browser does not support Web Bluetooth', 'err');
+    return;
+  }
   const opts = scanAll
     ? { acceptAllDevices: true, optionalServices: ALL_OPTIONAL_SERVICES }
     : {
@@ -1425,6 +1429,7 @@ function stopGraph() {
 
 // ─── Init ──────────────────────────────────────────────────────────────────
 updateSpeedDisplay(targetSpeed);
+log('App loaded v1.2 — bluetooth available: ' + (!!navigator.bluetooth), 'info');
 log('Ready — click "Connect to Tritur" to begin.');
 if (!navigator.bluetooth) {
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
