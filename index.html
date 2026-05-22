@@ -3,213 +3,477 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tritur Treadmill Control</title>
+  <title>TreadQuest</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <style>
+    /* ── Reset ───────────────────────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    /* ── Design tokens ───────────────────────────────────────── */
+    :root {
+      --navy:       #0a1438;
+      --navy-deep:  #06091e;
+      --navy-mid:   #13225e;
+      --white:      #f4f4ef;
+      --white-dim:  #c8c8b8;
+      --gold:       #f5c842;
+      --gold-dark:  #8a6b10;
+      --red:        #e84545;
+      --red-dark:   #5a1010;
+      --green:      #5fc46d;
+      --green-dark: #1a4a20;
+      --cyan:       #5fb8e6;
+      --font:       'Press Start 2P', monospace;
+    }
+
+    /* ── Page ────────────────────────────────────────────────── */
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #0d0d0d; color: #f0f0f0;
-      min-height: 100vh; display: flex; flex-direction: column;
-      align-items: center; padding: 2rem 1rem 4rem;
-    }
-    header { text-align: center; margin-bottom: 2rem; }
-    header h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.5px; }
-    header p  { color: #666; font-size: 0.85rem; margin-top: 0.25rem; }
-
-    .card {
-      background: #181818; border: 1px solid #262626;
-      border-radius: 18px; padding: 1.75rem;
-      width: 100%; max-width: 420px; margin-bottom: 1rem;
+      font-family: var(--font);
+      background: var(--navy-deep);
+      color: var(--white);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1.5rem 1rem 5rem;
     }
 
-    /* ── Status bar ───────────────────────────────────────────── */
-    .status-bar { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1rem; }
+    /* ── Animations ──────────────────────────────────────────── */
+    @keyframes blink          { 0%,100%{opacity:1} 50%{opacity:.3} }
+    @keyframes rn-tile-scroll { from{background-position:0 0} to{background-position:-64px 0} }
+    @keyframes rn-grass-scroll{ from{transform:translateX(0)} to{transform:translateX(-40px)} }
+    @keyframes rn-dust-fly    { 0%{opacity:.8;transform:translate(0,0)} 100%{opacity:0;transform:translate(-30px,-10px)} }
+
+    /* ── Pixel panel ─────────────────────────────────────────── */
+    .px-panel {
+      background: var(--navy);
+      border: 3px solid var(--white);
+      box-shadow: 0 0 0 3px var(--navy), 0 0 0 6px var(--white);
+      padding: 12px;
+      width: 100%;
+      max-width: 420px;
+      margin-bottom: 12px;
+    }
+    .px-panel-header {
+      font-size: 8px;
+      color: var(--gold);
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+    }
+
+    /* ── Wordmark ────────────────────────────────────────────── */
+    header {
+      text-align: center;
+      margin-bottom: 16px;
+      width: 100%;
+      max-width: 420px;
+    }
+    header h1 {
+      font-size: 16px;
+      color: var(--gold);
+      letter-spacing: 3px;
+      text-shadow: 3px 3px 0 #000;
+    }
+    header p {
+      font-size: 7px;
+      color: var(--white-dim);
+      letter-spacing: 1px;
+      margin-top: 8px;
+    }
+
+    /* ── Browser warning ─────────────────────────────────────── */
+    #browserWarning {
+      background: var(--navy);
+      border: 3px solid var(--gold);
+      box-shadow: 0 0 0 3px var(--navy), 0 0 0 6px var(--gold);
+      padding: 10px 12px;
+      font-size: 7px;
+      color: var(--gold);
+      max-width: 420px;
+      width: 100%;
+      margin-bottom: 12px;
+      line-height: 2;
+      display: none;
+      letter-spacing: 0.5px;
+    }
+    #browserWarning a { color: var(--cyan); }
+
+    /* ── Status bar ──────────────────────────────────────────── */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border: 2px solid rgba(255,255,255,0.2);
+      background: var(--navy-mid);
+      margin-bottom: 12px;
+      max-width: 420px;
+      width: 100%;
+    }
     .dot {
-      width: 9px; height: 9px; border-radius: 50%; background: #383838; flex-shrink: 0;
-      transition: background 0.3s, box-shadow 0.3s;
+      width: 8px;
+      height: 8px;
+      background: #333;
+      flex-shrink: 0;
+      /* no border-radius — pixel corners */
     }
-    .dot.connected  { background: #22c55e; box-shadow: 0 0 8px #22c55e88; }
-    .dot.connecting { background: #f59e0b; animation: blink 1s ease-in-out infinite; }
-    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
-    #statusText { font-size: 0.875rem; color: #888; flex: 1; }
+    .dot.connected  { background: var(--green); }
+    .dot.connecting { background: var(--gold); animation: blink 1s steps(2) infinite; }
+    #statusText {
+      font-size: 7px;
+      color: var(--white-dim);
+      letter-spacing: 0.5px;
+      flex: 1;
+      text-transform: uppercase;
+    }
 
-    /* ── Response row ─────────────────────────────────────────── */
+    /* ── Connect / disconnect panels ─────────────────────────── */
+    #connectPanel { width: 100%; max-width: 420px; }
+
+    #controlPanel {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      width: 100%;
+      max-width: 420px;
+    }
+
+    /* ── Response row ────────────────────────────────────────── */
     .response-row {
-      display: flex; align-items: center; gap: 0.5rem;
-      background: #111; border: 1px solid #222;
-      border-radius: 10px; padding: 0.5rem 0.75rem;
-      margin-bottom: 1.25rem; font-size: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 7px;
     }
-    .response-label { color: #555; white-space: nowrap; }
+    .response-label { color: var(--white-dim); white-space: nowrap; letter-spacing: 0.5px; }
+
     .badge {
-      padding: 0.15rem 0.55rem; border-radius: 99px;
-      font-size: 0.7rem; font-weight: 700; font-family: monospace; white-space: nowrap;
+      padding: 2px 6px;
+      font-size: 7px;
+      font-family: var(--font);
+      white-space: nowrap;
+      letter-spacing: 0.5px;
     }
-    .badge-neutral { background: #252525; color: #666; }
-    .badge-ok      { background: #14331f; color: #22c55e; }
-    .badge-err     { background: #2a1111; color: #ef4444; }
-    .badge-warn    { background: #2a200a; color: #f59e0b; }
+    .badge-neutral { background: var(--navy-mid);  color: var(--white-dim); border: 1px solid rgba(255,255,255,0.2); }
+    .badge-ok      { background: #0a2a10;           color: var(--green);     border: 1px solid var(--green); }
+    .badge-err     { background: #2a0a0a;           color: var(--red);       border: 1px solid var(--red); }
+    .badge-warn    { background: #2a1a00;           color: var(--gold);      border: 1px solid var(--gold); }
+
     .btn-tiny {
-      margin-left: auto; font-size: 0.7rem; color: #555;
-      background: none; border: 1px solid #2e2e2e;
-      border-radius: 6px; padding: 0.2rem 0.5rem;
-      cursor: pointer; white-space: nowrap; transition: color 0.1s, border-color 0.1s;
+      font-size: 7px;
+      font-family: var(--font);
+      color: var(--white-dim);
+      background: var(--navy-mid);
+      border: 2px solid rgba(255,255,255,0.3);
+      padding: 3px 6px;
+      cursor: pointer;
+      white-space: nowrap;
+      letter-spacing: 0.5px;
+      margin-left: auto;
     }
-    .btn-tiny:hover { color: #888; border-color: #444; }
+    .btn-tiny:hover { color: var(--white); border-color: var(--white); }
     .btn-tiny:disabled { opacity: 0.3; cursor: not-allowed; }
 
-    /* ── Speed display ────────────────────────────────────────── */
-    .speed-display { text-align: center; margin: 0.5rem 0 1.25rem; }
-    .speed-number {
-      font-size: 5.5rem; font-weight: 800; line-height: 1;
-      letter-spacing: -4px; font-variant-numeric: tabular-nums;
-      color: #fff; transition: color 0.2s;
-    }
-    .speed-number.running { color: #22c55e; }
-    .speed-unit { color: #555; font-size: 0.9rem; margin-top: 0.4rem; }
-
-    /* ── +/- buttons ──────────────────────────────────────────── */
-    .speed-row {
-      display: flex; align-items: center;
-      justify-content: center; gap: 2rem; margin-bottom: 1.25rem;
-    }
-    .adj-btn {
-      width: 60px; height: 60px; border-radius: 50%;
-      border: 2px solid #2e2e2e; background: #1e1e1e;
-      color: #fff; font-size: 2rem; line-height: 1; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      transition: background 0.12s, border-color 0.12s, transform 0.1s;
-      user-select: none;
-    }
-    .adj-btn:hover:not(:disabled) { background: #2a2a2a; border-color: #444; }
-    .adj-btn:active:not(:disabled) { transform: scale(0.91); }
-    .adj-btn:disabled { opacity: 0.25; cursor: not-allowed; }
-    .adj-label { font-size: 0.7rem; color: #555; text-align: center; margin-top: 4px; }
-
-    /* ── Slider ───────────────────────────────────────────────── */
-    .slider-wrap { margin: 0.25rem 0 1.25rem; }
-    input[type=range] {
-      width: 100%; -webkit-appearance: none; appearance: none;
-      height: 5px; border-radius: 3px; outline: none;
-      background: linear-gradient(to right, #6366f1 0%, #6366f1 var(--pct,35%), #2e2e2e var(--pct,35%));
-    }
-    input[type=range]::-webkit-slider-thumb {
-      -webkit-appearance: none; appearance: none;
-      width: 22px; height: 22px; border-radius: 50%;
-      background: #6366f1; cursor: pointer; box-shadow: 0 0 6px #6366f166;
-    }
-    input[type=range]:disabled { opacity: 0.3; }
-    .slider-labels { display: flex; justify-content: space-between; font-size: 0.7rem; color: #555; margin-top: 6px; }
-
-    /* ── Action buttons ───────────────────────────────────────── */
-    .btn {
-      width: 100%; padding: 0.9rem; border-radius: 12px; border: none;
-      font-size: 1rem; font-weight: 700; cursor: pointer;
-      transition: background 0.15s, opacity 0.15s; margin-top: 0.5rem;
-    }
-    .btn:disabled { opacity: 0.35; cursor: not-allowed; }
-    .btn-connect  { background: #6366f1; color: #fff; }
-    .btn-connect:hover:not(:disabled)  { background: #5254e0; }
-    .btn-start    { background: #22c55e; color: #000; }
-    .btn-start:hover:not(:disabled)    { background: #16a34a; }
-    .btn-stop     { background: #ef4444; color: #fff; }
-    .btn-stop:hover:not(:disabled)     { background: #dc2626; }
-    .btn-secondary { background: #1e1e1e; color: #777; border: 1px solid #2e2e2e; }
-    .btn-secondary:hover:not(:disabled) { background: #242424; }
-
-    /* ── Features pill row ───────────────────────────────────── */
+    /* ── Feature pills ───────────────────────────────────────── */
     .features-row {
-      display: flex; flex-wrap: wrap; gap: 0.35rem;
-      margin-bottom: 1rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-bottom: 10px;
+      max-width: 420px;
+      width: 100%;
     }
     .feat-pill {
-      font-size: 0.65rem; padding: 0.15rem 0.5rem;
-      border-radius: 99px; border: 1px solid #2a2a2a; color: #555;
+      font-size: 6px;
+      padding: 2px 5px;
+      border: 2px solid rgba(255,255,255,0.2);
+      color: var(--white-dim);
+      letter-spacing: 0.5px;
+      font-family: var(--font);
     }
-    .feat-pill.on  { border-color: #6366f144; background: #6366f120; color: #a5b4fc; }
+    .feat-pill.on {
+      border-color: var(--cyan);
+      background: rgba(95,184,230,0.12);
+      color: var(--cyan);
+    }
+
+    /* ── Speed display ───────────────────────────────────────── */
+    .speed-display {
+      text-align: center;
+      margin: 4px 0 12px;
+    }
+    .speed-number {
+      font-size: 52px;
+      color: var(--white);
+      letter-spacing: -2px;
+      line-height: 1;
+      text-shadow: 4px 4px 0 #000;
+      transition: color 0.15s;
+    }
+    .speed-number.running { color: var(--gold); }
+    .speed-unit {
+      font-size: 9px;
+      color: var(--white-dim);
+      letter-spacing: 2px;
+      margin-top: 6px;
+    }
+
+    /* ── Speed gauge (20 segments) ───────────────────────────── */
+    .speed-gauge {
+      display: grid;
+      grid-template-columns: repeat(20, 1fr);
+      gap: 2px;
+      background: #000;
+      padding: 3px;
+      border: 2px solid var(--white);
+      margin-bottom: 12px;
+    }
+    .speed-gauge-seg {
+      height: 8px;
+      background: rgba(255,255,255,0.06);
+    }
+    .speed-gauge-seg.filled {
+      background: var(--cyan);
+      box-shadow: inset 0 -2px 0 rgba(0,0,0,0.35), inset 0 2px 0 rgba(255,255,255,0.18);
+    }
+
+    /* ── +/- step buttons ────────────────────────────────────── */
+    .speed-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      margin-bottom: 12px;
+    }
+    .adj-btn {
+      width: 56px;
+      height: 48px;
+      background: var(--gold);
+      border: 2px solid var(--white);
+      box-shadow: 0 3px 0 var(--gold-dark), 0 0 0 1px var(--navy-deep);
+      color: var(--navy-deep);
+      font-size: 20px;
+      font-family: var(--font);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+    }
+    .adj-btn:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 var(--gold-dark); }
+    .adj-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .adj-label { font-size: 6px; color: var(--white-dim); text-align: center; margin-top: 3px; letter-spacing: 0.5px; }
+
+    /* ── Slider ──────────────────────────────────────────────── */
+    .slider-wrap { margin-bottom: 12px; }
+    input[type=range] {
+      width: 100%;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 6px;
+      background: linear-gradient(to right, var(--gold) 0%, var(--gold) var(--pct,0%), #111 var(--pct,0%));
+      border: 2px solid var(--white);
+      outline: none;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      background: var(--white);
+      border: 2px solid var(--navy-deep);
+      cursor: pointer;
+    }
+    input[type=range]:disabled { opacity: 0.3; }
+    .slider-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 6px;
+      color: var(--white-dim);
+      margin-top: 4px;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── Pixel buttons ───────────────────────────────────────── */
+    .btn {
+      width: 100%;
+      padding: 10px;
+      border: 2px solid var(--white);
+      font-family: var(--font);
+      font-size: 9px;
+      letter-spacing: 1px;
+      cursor: pointer;
+      text-transform: uppercase;
+      margin-top: 8px;
+    }
+    .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    .btn-connect {
+      background: var(--cyan);
+      color: var(--navy-deep);
+      box-shadow: 0 3px 0 #1a4a6a, 0 0 0 1px var(--navy-deep);
+    }
+    .btn-connect:hover:not(:disabled) { background: #4aa8d6; }
+
+    .btn-start {
+      background: var(--green);
+      color: var(--navy-deep);
+      box-shadow: 0 3px 0 var(--green-dark), 0 0 0 1px var(--navy-deep);
+    }
+    .btn-start:hover:not(:disabled) { background: #4db45d; }
+
+    .btn-stop {
+      background: var(--red);
+      color: var(--white);
+      box-shadow: 0 3px 0 var(--red-dark), 0 0 0 1px var(--navy-deep);
+    }
+    .btn-stop:hover:not(:disabled) { background: #d03535; }
+
+    .btn-secondary {
+      background: var(--navy);
+      color: var(--white-dim);
+      box-shadow: 0 3px 0 #000, 0 0 0 1px var(--navy-deep);
+    }
+    .btn-secondary:hover:not(:disabled) { background: var(--navy-mid); }
 
     /* ── Debug row ───────────────────────────────────────────── */
-    .debug-row { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
-    .debug-row .btn-tiny { flex: 1; text-align: center; padding: 0.4rem 0.25rem; font-size: 0.72rem; }
+    .debug-row { display: flex; gap: 6px; margin-top: 8px; }
+    .debug-row .btn-tiny { flex: 1; text-align: center; padding: 5px 4px; margin-left: 0; }
 
     /* ── Custom command tester ───────────────────────────────── */
     .hint-text {
-      font-size: 0.75rem; color: #555; line-height: 1.5;
-      margin-bottom: 1rem;
+      font-size: 7px;
+      color: var(--white-dim);
+      line-height: 1.9;
+      margin-bottom: 10px;
+      letter-spacing: 0.5px;
     }
-    .hint-text strong { color: #f59e0b; font-weight: 600; }
-    .custom-row { display: flex; align-items: center; gap: 0.5rem; }
-    .custom-label { font-size: 0.72rem; color: #555; white-space: nowrap; width: 90px; flex-shrink: 0; }
+    .hint-text strong { color: var(--gold); }
+
+    .custom-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+    .custom-label {
+      font-size: 7px;
+      color: var(--white-dim);
+      white-space: nowrap;
+      width: 80px;
+      flex-shrink: 0;
+      letter-spacing: 0.5px;
+    }
+
     .hex-input {
-      flex: 1; background: #111; color: #e2e8f0;
-      border: 1px solid #2e2e2e; border-radius: 7px;
-      padding: 0.35rem 0.6rem; font-size: 0.75rem;
-      font-family: monospace; outline: none;
+      flex: 1;
+      background: var(--navy-deep);
+      color: var(--cyan);
+      border: 2px solid var(--white);
+      padding: 4px 6px;
+      font-size: 7px;
+      font-family: monospace;
+      outline: none;
+      letter-spacing: 1px;
     }
-    .hex-input:focus { border-color: #6366f1; }
+    .hex-input:focus { border-color: var(--gold); }
+
+    .tune-select {
+      background: var(--navy-deep);
+      color: var(--white);
+      border: 2px solid var(--white);
+      padding: 4px 6px;
+      font-family: var(--font);
+      font-size: 7px;
+      outline: none;
+    }
+
     .btn-send {
-      background: #6366f1; color: #fff; border: none;
-      border-radius: 7px; padding: 0.35rem 0.75rem;
-      font-size: 0.75rem; font-weight: 700; cursor: pointer;
-      white-space: nowrap; transition: background 0.12s;
+      background: var(--gold);
+      color: var(--navy-deep);
+      border: 2px solid var(--white);
+      box-shadow: 0 2px 0 var(--gold-dark);
+      padding: 4px 8px;
+      font-size: 7px;
+      font-family: var(--font);
+      cursor: pointer;
+      white-space: nowrap;
+      letter-spacing: 0.5px;
     }
-    .btn-send:hover { background: #5254e0; }
-    .preset-group { margin-top: 1rem; }
-    .preset-group-label { font-size: 0.65rem; color: #444; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 0.4rem; }
-    .preset-row { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+
+    .preset-group { margin-top: 10px; }
+    .preset-group-label {
+      font-size: 6px;
+      color: var(--white-dim);
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+    .preset-row { display: flex; flex-wrap: wrap; gap: 4px; }
     .preset-btn {
-      font-size: 0.7rem; font-family: monospace;
-      background: #1a1a1a; color: #888;
-      border: 1px solid #2a2a2a; border-radius: 6px;
-      padding: 0.3rem 0.6rem; cursor: pointer;
-      transition: background 0.1s, color 0.1s, border-color 0.1s;
+      font-size: 7px;
+      font-family: var(--font);
+      background: var(--navy-mid);
+      color: var(--white-dim);
+      border: 2px solid rgba(255,255,255,0.2);
+      padding: 3px 6px;
+      cursor: pointer;
+      letter-spacing: 0.5px;
     }
-    .preset-btn:hover { background: #252525; color: #ccc; border-color: #444; }
-    .preset-btn.fired { background: #14331f; color: #22c55e; border-color: #22c55e44; }
+    .preset-btn:hover { background: var(--navy); color: var(--white); border-color: var(--white); }
+    .preset-btn.fired { background: #0a2a10; color: var(--green); border-color: var(--green); }
+
     .custom-rx {
-      margin-top: 0.75rem; font-family: monospace; font-size: 0.7rem;
-      color: #a78bfa; min-height: 1.2em; line-height: 1.6;
+      margin-top: 8px;
+      font-family: monospace;
+      font-size: 7px;
+      color: var(--cyan);
+      min-height: 1.2em;
+      line-height: 1.6;
     }
 
-    /* ── Services panel ───────────────────────────────────────── */
+    /* ── Services inspector ──────────────────────────────────── */
     #servicesCard { display: none; }
-    .card-label { font-size: 0.8rem; color: #555; margin-bottom: 0.75rem; }
-    .service-item { margin-bottom: 0.5rem; }
-    .service-uuid { font-family: monospace; font-size: 0.75rem; color: #6366f1; }
-    .char-row { font-family: monospace; font-size: 0.68rem; color: #555; margin-left: 1rem; margin-top: 2px; }
-    .ftms-warning { font-size: 0.75rem; color: #f59e0b; margin-top: 0.75rem; line-height: 1.5; }
+    .card-label { font-size: 8px; color: var(--gold); margin-bottom: 8px; letter-spacing: 1px; }
+    .service-item { margin-bottom: 6px; }
+    .service-uuid { font-family: monospace; font-size: 7px; color: var(--cyan); }
+    .char-row { font-family: monospace; font-size: 6px; color: var(--white-dim); margin-left: 10px; margin-top: 2px; }
+    .ftms-warning { font-size: 7px; color: var(--gold); margin-top: 8px; line-height: 1.7; }
 
-    /* ── Log ──────────────────────────────────────────────────── */
-    .log-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
-    #clearLog { font-size: 0.72rem; color: #444; background: none; border: none; cursor: pointer; }
-    #clearLog:hover { color: #666; }
+    /* ── Log ─────────────────────────────────────────────────── */
+    .log-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    #clearLog {
+      font-size: 7px;
+      color: var(--white-dim);
+      background: none;
+      border: 1px solid rgba(255,255,255,0.2);
+      padding: 2px 6px;
+      cursor: pointer;
+      font-family: var(--font);
+    }
+    #clearLog:hover { color: var(--white); border-color: var(--white); }
     #log {
       font-family: 'Menlo', 'Consolas', monospace;
-      font-size: 0.72rem; max-height: 220px; overflow-y: auto; line-height: 1.6;
+      font-size: 7px;
+      max-height: 180px;
+      overflow-y: auto;
+      line-height: 1.7;
     }
-    #log .l-info    { color: #6366f1; }
-    #log .l-ok      { color: #22c55e; }
-    #log .l-warn    { color: #f59e0b; }
-    #log .l-err     { color: #ef4444; }
-    #log .l-default { color: #555; }
-    #log .l-tx      { color: #38bdf8; }
-    #log .l-rx      { color: #a78bfa; }
+    #log .l-info    { color: var(--cyan); }
+    #log .l-ok      { color: var(--green); }
+    #log .l-warn    { color: var(--gold); }
+    #log .l-err     { color: var(--red); }
+    #log .l-default { color: var(--white-dim); }
+    #log .l-tx      { color: #7fd4f8; }
+    #log .l-rx      { color: #b8a4f8; }
 
-    /* ── Pixel runner card ───────────────────────────────────── */
-    #runnerCard { display: none; max-width: 640px; padding: .75rem .75rem .5rem; }
-    .rn-outer   { width: 100%; overflow: hidden; border-radius: 8px; }
+    /* ── Pixel runner scene ──────────────────────────────────── */
+    #runnerCard { display: none; }
+    .rn-outer { width: 100%; overflow: hidden; }
     #runnerScene {
-      width: 620px; height: 220px; position: relative; overflow: hidden;
+      width: 620px; height: 220px;
+      position: relative; overflow: hidden;
       transform-origin: top left;
-      border: 3px solid #aa7700;
-      box-shadow: 0 0 0 3px #553300, 0 0 30px #ff880033;
+      border: 3px solid var(--white);
+      box-shadow: 0 0 0 3px var(--navy), 0 0 0 6px var(--white);
       background: linear-gradient(180deg,#1a1a4a 0%,#2a2a6a 30%,#1a3a1a 60%,#2a4a2a 80%,#3a5a1a 100%);
     }
     .rn-sky {
-      position:absolute; inset:0; bottom:80px;
+      position: absolute; inset: 0; bottom: 80px;
       background-image:
         radial-gradient(1px 1px at 8%  15%,#fff  0%,transparent 100%),
         radial-gradient(1px 1px at 22%  8%,#fff  0%,transparent 100%),
@@ -220,90 +484,103 @@
         radial-gradient(2px 2px at 15% 30%,#ffdd88 0%,transparent 100%),
         radial-gradient(2px 2px at 75% 25%,#ffdd88 0%,transparent 100%);
     }
+    /* Square pixel moon instead of circle */
     .rn-moon {
-      position:absolute; top:15px; right:60px;
-      width:32px; height:32px; background:#ffeebb; border-radius:50%;
-      box-shadow:0 0 20px #ffcc6688;
+      position: absolute; top: 15px; right: 60px;
+      width: 24px; height: 24px;
+      background: var(--gold);
+      box-shadow: 0 0 0 2px var(--white);
     }
     .rn-ground {
-      position:absolute; bottom:0; left:0; right:0; height:75px;
-      background:linear-gradient(180deg,#2a4a00 0%,#1e3800 40%,#2a3000 100%);
-      border-top:3px solid #5a8a00;
+      position: absolute; bottom: 0; left: 0; right: 0; height: 75px;
+      background: linear-gradient(180deg,#2a4a00 0%,#1e3800 40%,#2a3000 100%);
+      border-top: 3px solid #5a8a00;
     }
     .rn-tiles {
-      position:absolute; top:0; left:0; right:0; height:16px;
-      background:repeating-linear-gradient(90deg,#5a8a0088 0px,#5a8a0088 32px,#4a7a0088 32px,#4a7a0088 64px);
-      border-bottom:1px solid #4a7a0044;
-      animation:rn-tile-scroll .5s linear infinite;
+      position: absolute; top: 0; left: 0; right: 0; height: 16px;
+      background: repeating-linear-gradient(90deg,#5a8a0088 0px,#5a8a0088 32px,#4a7a0088 32px,#4a7a0088 64px);
+      border-bottom: 1px solid #4a7a0044;
+      animation: rn-tile-scroll .5s linear infinite;
     }
     .rn-grass {
-      position:absolute; top:-6px; left:0; right:0; height:10px;
-      background:repeating-linear-gradient(90deg,transparent 0,transparent 14px,#6aaa00 14px,#6aaa00 18px,#88cc00 18px,#88cc00 20px,transparent 20px,transparent 40px);
-      animation:rn-grass-scroll .5s linear infinite;
+      position: absolute; top: -6px; left: 0; right: 0; height: 10px;
+      background: repeating-linear-gradient(90deg,transparent 0,transparent 14px,#6aaa00 14px,#6aaa00 18px,#88cc00 18px,#88cc00 20px,transparent 20px,transparent 40px);
+      animation: rn-grass-scroll .5s linear infinite;
     }
-    @keyframes rn-tile-scroll  { from{background-position:0 0} to{background-position:-64px 0} }
-    @keyframes rn-grass-scroll { from{transform:translateX(0)} to{transform:translateX(-40px)} }
-    @keyframes rn-dust-fly     { 0%{opacity:.8;transform:translate(0,0)} 100%{opacity:0;transform:translate(-30px,-10px)} }
-    #rn-hero  { position:absolute; bottom:72px; left:50px; image-rendering:pixelated; width:128px; height:128px; }
-    #rn-slime { position:absolute; bottom:76px; image-rendering:pixelated; width:48px; height:40px; }
+    #rn-hero  { position: absolute; bottom: 72px; left: 50px; image-rendering: pixelated; width: 128px; height: 128px; }
+    #rn-slime { position: absolute; bottom: 76px; image-rendering: pixelated; width: 48px; height: 40px; }
     #rn-label {
-      font-family:'Press Start 2P',monospace; font-size:8px; letter-spacing:3px;
-      text-align:center; color:#aa7700; margin-top:.5rem; min-height:1.4em;
+      font-family: var(--font);
+      font-size: 8px;
+      letter-spacing: 2px;
+      text-align: center;
+      color: var(--gold);
+      padding: 6px 0 2px;
+      min-height: 1.4em;
     }
 
     /* ── Speed graph ─────────────────────────────────────────── */
     #graphCard { display: none; }
     .graph-header {
-      display: flex; justify-content: space-between;
-      align-items: center; margin-bottom: .75rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
     }
-    .graph-meta { font-size: .7rem; color: #3a3a3a; }
+    .graph-meta { font-size: 7px; color: var(--white-dim); letter-spacing: 0.5px; }
     #speedGraph {
-      width: 100%; height: 140px; display: block;
-      border-radius: 6px; background: #0d0d0d;
+      width: 100%; height: 120px; display: block;
+      background: var(--navy-deep);
+      border: 2px solid rgba(255,255,255,0.15);
     }
 
+    /* ── Utility ─────────────────────────────────────────────── */
     .hidden { display: none !important; }
-    #browserWarning {
-      background: #2a1a00; border: 1px solid #f59e0b44; border-radius: 10px;
-      padding: 0.75rem 1rem; font-size: 0.8rem; color: #f59e0b;
-      max-width: 420px; margin-bottom: 1rem; line-height: 1.5; display: none;
-    }
   </style>
 </head>
 <body>
 
+<!-- Wordmark -->
 <header>
-  <h1>Tritur Treadmill</h1>
-  <p>Bluetooth Speed Control</p>
-  <p style="font-size:0.7rem;color:#333;margin-top:0.25rem">v2.3</p>
+  <h1>TREADQUEST</h1>
+  <p>※ THY TREADMILL AWAITS ※</p>
 </header>
 
+<!-- Browser compatibility warning (shown by app.js if BT unavailable) -->
 <div id="browserWarning"></div>
 
-<div class="card">
-  <div class="status-bar">
-    <div class="dot" id="dot"></div>
-    <span id="statusText">Disconnected</span>
+<!-- Connection status strip -->
+<div class="status-bar">
+  <div class="dot" id="dot"></div>
+  <span id="statusText">Disconnected</span>
+</div>
+
+<!-- ── CONNECTED UI ────────────────────────────────────────── -->
+<div id="controlPanel" class="hidden">
+
+  <!-- Last BLE response + retry control -->
+  <div class="px-panel">
+    <div class="response-row">
+      <span class="response-label">LAST RESPONSE</span>
+      <span class="badge badge-neutral" id="responseBadge">—</span>
+      <button class="btn-tiny" id="btnRetryCtrl" disabled>RE-CTRL</button>
+    </div>
   </div>
 
-  <!-- Connected UI -->
-  <div id="controlPanel" class="hidden">
+  <!-- FTMS feature pills (populated on connect) -->
+  <div class="features-row" id="featuresRow"></div>
 
-    <!-- Last BLE response badge -->
-    <div class="response-row">
-      <span class="response-label">Last response:</span>
-      <span class="badge badge-neutral" id="responseBadge">—</span>
-      <button class="btn-tiny" id="btnRetryCtrl" disabled>Re-request Control</button>
-    </div>
-
-    <!-- FTMS feature pills (populated on connect) -->
-    <div class="features-row" id="featuresRow"></div>
+  <!-- Speed panel -->
+  <div class="px-panel">
+    <div class="px-panel-header">SPEED CONTROL</div>
 
     <div class="speed-display">
       <div class="speed-number" id="speedNum">0.0</div>
-      <div class="speed-unit">km/h</div>
+      <div class="speed-unit">KM/H</div>
     </div>
+
+    <!-- 20-segment speed gauge (filled by inline script below) -->
+    <div class="speed-gauge" id="speedGauge"></div>
 
     <div class="speed-row">
       <div>
@@ -318,134 +595,168 @@
 
     <div class="slider-wrap">
       <input type="range" id="slider" min="1" max="20" step="0.5" value="8" disabled>
-      <div class="slider-labels"><span>1 km/h</span><span>20 km/h</span></div>
+      <div class="slider-labels"><span>1 KM/H</span><span>20 KM/H</span></div>
     </div>
 
-    <button class="btn btn-start" id="btnStartStop" disabled>Start</button>
+    <button class="btn btn-start" id="btnStartStop" disabled>▶ START</button>
 
-    <!-- Debug helpers -->
     <div class="debug-row">
-      <button class="btn-tiny" id="btnReset" disabled>Reset machine</button>
-      <button class="btn-tiny" id="btnDisconnect">Disconnect</button>
+      <button class="btn-tiny" id="btnReset" disabled>RESET MACHINE</button>
+      <button class="btn-tiny" id="btnDisconnect">DISCONNECT</button>
     </div>
   </div>
 
-  <!-- Disconnected UI -->
-  <div id="connectPanel">
-    <button class="btn btn-connect" id="btnConnect">Connect to Tritur</button>
-    <button class="btn btn-secondary" id="btnScanAll" style="margin-top:.5rem">Scan all Bluetooth devices</button>
+</div>
+
+<!-- ── DISCONNECTED UI ─────────────────────────────────────── -->
+<div id="connectPanel">
+  <div class="px-panel">
+    <div class="px-panel-header">BLUETOOTH</div>
+    <button class="btn btn-connect" id="btnConnect">▶ CONNECT TO TRITUR</button>
+    <button class="btn btn-secondary" id="btnScanAll">SCAN ALL DEVICES</button>
   </div>
 </div>
 
-<!-- Pixel runner -->
-<div class="card" id="runnerCard">
-  <div class="rn-outer">
-    <div id="runnerScene">
-      <div class="rn-sky"></div>
-      <div class="rn-moon"></div>
-      <!-- castle silhouette -->
-      <div style="position:absolute;bottom:68px;right:20px;display:flex;align-items:flex-end">
-        <div style="width:8px;height:30px;background:#0a0a22"></div>
-        <div style="width:4px;height:38px;background:#0a0a22"></div>
-        <div style="width:8px;height:30px;background:#0a0a22"></div>
-        <div style="width:4px;height:10px;background:#0a0a22"></div>
-        <div style="width:20px;height:50px;background:#0a0a22"></div>
-        <div style="width:4px;height:10px;background:#0a0a22"></div>
-        <div style="width:8px;height:40px;background:#0a0a22"></div>
-        <div style="width:4px;height:48px;background:#0a0a22"></div>
-        <div style="width:8px;height:40px;background:#0a0a22"></div>
+<!-- ── PIXEL RUNNER (shown on connect by app.js) ──────────── -->
+<div id="runnerCard" style="width:100%;max-width:420px;margin-bottom:12px;">
+  <div class="px-panel" style="padding:10px 10px 0;">
+    <div class="px-panel-header">CHARACTER SCENE</div>
+    <div class="rn-outer">
+      <div id="runnerScene">
+        <div class="rn-sky"></div>
+        <div class="rn-moon"></div>
+        <!-- castle silhouette -->
+        <div style="position:absolute;bottom:68px;right:20px;display:flex;align-items:flex-end">
+          <div style="width:8px;height:30px;background:#0a0a22"></div>
+          <div style="width:4px;height:38px;background:#0a0a22"></div>
+          <div style="width:8px;height:30px;background:#0a0a22"></div>
+          <div style="width:4px;height:10px;background:#0a0a22"></div>
+          <div style="width:20px;height:50px;background:#0a0a22"></div>
+          <div style="width:4px;height:10px;background:#0a0a22"></div>
+          <div style="width:8px;height:40px;background:#0a0a22"></div>
+          <div style="width:4px;height:48px;background:#0a0a22"></div>
+          <div style="width:8px;height:40px;background:#0a0a22"></div>
+        </div>
+        <canvas id="rn-slime" width="24" height="20"></canvas>
+        <canvas id="rn-hero"  width="32" height="32"></canvas>
+        <div class="rn-ground">
+          <div class="rn-grass"></div>
+          <div class="rn-tiles"></div>
+        </div>
+        <div id="rn-dust" style="position:absolute;inset:0;pointer-events:none"></div>
       </div>
-      <canvas id="rn-slime" width="24" height="20"></canvas>
-      <canvas id="rn-hero"  width="32" height="32"></canvas>
-      <div class="rn-ground">
-        <div class="rn-grass"></div>
-        <div class="rn-tiles"></div>
+    </div>
+    <div id="rn-label">✦ CONNECT TREADMILL ✦</div>
+  </div>
+</div>
+
+<!-- ── SPEED HISTORY GRAPH (shown on connect by app.js) ────── -->
+<div id="graphCard" style="width:100%;max-width:420px;margin-bottom:12px;">
+  <div class="px-panel">
+    <div class="graph-header">
+      <span class="card-label" style="margin:0">SPEED HISTORY</span>
+      <span class="graph-meta">LAST 60S</span>
+    </div>
+    <canvas id="speedGraph"></canvas>
+  </div>
+</div>
+
+<!-- ── BLE SERVICES INSPECTOR (shown on connect by app.js) ─── -->
+<div id="servicesCard" style="width:100%;max-width:420px;margin-bottom:12px;">
+  <div class="px-panel">
+    <div class="card-label">BLE SERVICES</div>
+    <div id="servicesList"></div>
+    <div id="ftmsWarning" class="ftms-warning"></div>
+  </div>
+</div>
+
+<!-- ── CUSTOM COMMAND TESTER (shown when writable chars found) -->
+<div id="customCard" style="display:none;width:100%;max-width:420px;margin-bottom:12px;">
+  <div class="px-panel">
+    <div class="card-label">CUSTOM COMMANDS</div>
+    <p class="hint-text">
+      FitShow likely uses a <strong>PROPRIETARY SERVICE</strong> — not FTMS.
+      Select a writable characteristic and fire presets to find the right one.
+    </p>
+
+    <div class="custom-row">
+      <span class="custom-label">CHAR</span>
+      <select id="customCharSel" class="tune-select" style="flex:1"></select>
+    </div>
+    <div class="custom-row">
+      <span class="custom-label">HEX BYTES</span>
+      <input id="customHex" class="hex-input" placeholder="F7 01 04 04" spellcheck="false">
+      <button id="btnSendCustom" class="btn-send">SEND</button>
+    </div>
+
+    <div class="preset-group">
+      <div class="preset-group-label">ICONSOLE+ / FFF2</div>
+      <div class="preset-row">
+        <button class="preset-btn" data-hex="F7 01 04 04">▶ START</button>
+        <button class="preset-btn" data-hex="F7 01 05 05">■ STOP</button>
+        <button class="preset-btn" data-hex="F7 01 06 06">❚❚ PAUSE</button>
+        <button class="preset-btn" data-hex="F7 01 A0 A0">? INFO</button>
       </div>
-      <div id="rn-dust" style="position:absolute;inset:0;pointer-events:none"></div>
     </div>
-  </div>
-  <div id="rn-label">✦ CONNECT TREADMILL ✦</div>
-</div>
-
-<!-- Speed history graph -->
-<div class="card" id="graphCard">
-  <div class="graph-header">
-    <span class="card-label" style="margin:0">Speed History</span>
-    <span class="graph-meta">last 60 s</span>
-  </div>
-  <canvas id="speedGraph"></canvas>
-</div>
-
-<!-- Services inspector -->
-<div class="card" id="servicesCard">
-  <div class="card-label">Discovered BLE Services</div>
-  <div id="servicesList"></div>
-  <div id="ftmsWarning" class="ftms-warning"></div>
-</div>
-
-<!-- Custom BLE command tester -->
-<div class="card" id="customCard" style="display:none">
-  <div class="card-label">Custom Command Tester</div>
-  <p class="hint-text">
-    FitShow likely uses a <strong>proprietary service</strong> for Start/Stop — not FTMS.
-    Select a writable characteristic below and fire preset commands to find the right one.
-    Watch the treadmill for a beep + action.
-  </p>
-
-  <div class="custom-row">
-    <span class="custom-label">Characteristic</span>
-    <select id="customCharSel" class="tune-select" style="flex:1"></select>
-  </div>
-
-  <div class="custom-row" style="margin-top:.6rem">
-    <span class="custom-label">Hex bytes</span>
-    <input id="customHex" class="hex-input" placeholder="e.g.  F7 01 04 04" spellcheck="false">
-    <button id="btnSendCustom" class="btn-send">Send</button>
-  </div>
-
-  <!-- Preset groups -->
-  <div class="preset-group">
-    <div class="preset-group-label">iConsole+ / FFF2</div>
-    <div class="preset-row">
-      <button class="preset-btn" data-hex="F7 01 04 04">▶ Start</button>
-      <button class="preset-btn" data-hex="F7 01 05 05">■ Stop</button>
-      <button class="preset-btn" data-hex="F7 01 06 06">❚❚ Pause</button>
-      <button class="preset-btn" data-hex="F7 01 A0 A0">? Info</button>
+    <div class="preset-group">
+      <div class="preset-group-label">SHUA / KINGSMITH</div>
+      <div class="preset-row">
+        <button class="preset-btn" data-hex="02 01 00 00 00 03">▶ START</button>
+        <button class="preset-btn" data-hex="02 01 01 00 00 04">■ STOP</button>
+        <button class="preset-btn" data-hex="02 00 00 00 00 02">? PING</button>
+      </div>
     </div>
-  </div>
-
-  <div class="preset-group">
-    <div class="preset-group-label">Shua / KingSmith style</div>
-    <div class="preset-row">
-      <button class="preset-btn" data-hex="02 01 00 00 00 03">▶ Start</button>
-      <button class="preset-btn" data-hex="02 01 01 00 00 04">■ Stop</button>
-      <button class="preset-btn" data-hex="02 00 00 00 00 02">? Ping</button>
+    <div class="preset-group">
+      <div class="preset-group-label">GENERIC</div>
+      <div class="preset-row">
+        <button class="preset-btn" data-hex="01">01</button>
+        <button class="preset-btn" data-hex="02">02</button>
+        <button class="preset-btn" data-hex="03">03</button>
+        <button class="preset-btn" data-hex="04">04</button>
+        <button class="preset-btn" data-hex="05">05</button>
+        <button class="preset-btn" data-hex="00">00</button>
+      </div>
     </div>
-  </div>
 
-  <div class="preset-group">
-    <div class="preset-group-label">Generic single-byte</div>
-    <div class="preset-row">
-      <button class="preset-btn" data-hex="01">01</button>
-      <button class="preset-btn" data-hex="02">02</button>
-      <button class="preset-btn" data-hex="03">03</button>
-      <button class="preset-btn" data-hex="04">04</button>
-      <button class="preset-btn" data-hex="05">05</button>
-      <button class="preset-btn" data-hex="00">00</button>
-    </div>
+    <div id="customRx" class="custom-rx"></div>
   </div>
-
-  <div id="customRx" class="custom-rx"></div>
 </div>
 
-<!-- Log -->
-<div class="card">
-  <div class="log-header">
-    <span class="card-label" style="margin:0">Log</span>
-    <button id="clearLog">clear</button>
+<!-- ── LOG ────────────────────────────────────────────────── -->
+<div style="width:100%;max-width:420px;">
+  <div class="px-panel">
+    <div class="log-header">
+      <span class="card-label" style="margin:0">LOG</span>
+      <button id="clearLog">CLEAR</button>
+    </div>
+    <div id="log"></div>
   </div>
-  <div id="log"></div>
 </div>
+
+<!-- Speed gauge: build segments + drive from speedNum mutations -->
+<script>
+  (function () {
+    const gauge = document.getElementById('speedGauge');
+    for (let i = 0; i < 20; i++) {
+      const d = document.createElement('div');
+      d.className = 'speed-gauge-seg';
+      gauge.appendChild(d);
+    }
+    const segs = gauge.querySelectorAll('.speed-gauge-seg');
+
+    function refreshGauge() {
+      const speed = parseFloat(document.getElementById('speedNum').textContent) || 0;
+      // map 1–20 km/h → 0–20 filled segments
+      const filled = Math.max(0, Math.round(((speed - 1) / 19) * 20));
+      segs.forEach((s, i) => s.classList.toggle('filled', i < filled));
+    }
+
+    new MutationObserver(refreshGauge).observe(
+      document.getElementById('speedNum'),
+      { childList: true, characterData: true, subtree: true }
+    );
+  })();
+</script>
 
 <script src="app.js?v=2.3"></script>
 </body>

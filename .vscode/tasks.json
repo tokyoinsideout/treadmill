@@ -1,0 +1,27 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Start HTTP Server",
+            "type": "shell",
+            "command": "python3 -m http.server 8080",
+            "isBackground": true,
+            "problemMatcher": {
+                "owner": "custom",
+                "pattern": {
+                    "regexp": "^$"
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "^Serving HTTP",
+                    "endsPattern": "^Serving HTTP"
+                }
+            },
+            "presentation": {
+                "reveal": "silent",
+                "panel": "dedicated",
+                "close": false
+            }
+        }
+    ]
+}
