@@ -477,6 +477,17 @@ async function discoverAndSetup() {
     log(`Found ${customChars.length} writable characteristic(s) — custom tester ready`, 'info');
   }
 
+  if (!hasFTMS) {
+    // getPrimaryServices() may not enumerate FTMS in Bluefy — try direct access
+    try {
+      await server.getPrimaryService(UUID.FTMS_SERVICE);
+      hasFTMS = true;
+      log('FTMS found via direct lookup (not in enumeration)', 'ok');
+    } catch (e) {
+      log('FTMS direct lookup also failed: ' + e.message, 'warn');
+    }
+  }
+
   if (hasFTMS) {
     log('FTMS detected — setting up', 'ok');
     await setupFTMS();
@@ -974,7 +985,7 @@ function stopGraph() {
 
 // ─── Init ──────────────────────────────────────────────────────────────────
 updateSpeedDisplay(targetSpeed);
-log('App loaded v2.1 — bluetooth available: ' + (!!navigator.bluetooth), 'info');
+log('App loaded v2.2 — bluetooth available: ' + (!!navigator.bluetooth), 'info');
 log('Ready — click "Connect to Tritur" to begin.');
 if (!navigator.bluetooth) {
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
