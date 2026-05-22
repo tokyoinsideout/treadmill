@@ -569,17 +569,7 @@ async function connect(scanAll = false) {
     log('navigator.bluetooth is undefined — browser does not support Web Bluetooth', 'err');
     return;
   }
-  const opts = scanAll
-    ? { acceptAllDevices: true, optionalServices: ALL_OPTIONAL_SERVICES }
-    : {
-        filters: [
-          { name: 'FS-C496A8' },               // confirmed BLE device name
-          { namePrefix: 'FS-' },                // other FitShow devices
-          { name: 'tritur' }, { namePrefix: 'Tritur' }, { namePrefix: 'TRITUR' },
-          { services: [UUID.FTMS_SERVICE] },
-        ],
-        optionalServices: ALL_OPTIONAL_SERVICES,
-      };
+  const opts = { acceptAllDevices: true, optionalServices: [0x1826] };
 
   try {
     setStatus('connecting', 'Scanning…');
@@ -600,11 +590,10 @@ async function connect(scanAll = false) {
     updateSpeedDisplay(targetSpeed);
     startGraph();
   } catch (err) {
-    if (err.name === 'NotFoundError') {
-      log('Device picker closed — no device selected or none found', 'warn');
-    } else {
-      log(`Connection failed: ${err.name}: ${err.message}`, 'err');
-    }
+    var name = err && err.name;
+    var msg  = err && err.message;
+    var code = err && err.code;
+    log('Connection failed — name=' + name + ' msg=' + msg + ' code=' + code + ' raw=' + String(err), 'err');
     setStatus('', 'Disconnected');
     btnConnect.disabled = btnScanAll.disabled = false;
   }
@@ -981,7 +970,7 @@ function stopGraph() {
 
 // ─── Init ──────────────────────────────────────────────────────────────────
 updateSpeedDisplay(targetSpeed);
-log('App loaded v1.6 — bluetooth available: ' + (!!navigator.bluetooth), 'info');
+log('App loaded v1.7 — bluetooth available: ' + (!!navigator.bluetooth), 'info');
 log('Ready — click "Connect to Tritur" to begin.');
 if (!navigator.bluetooth) {
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
