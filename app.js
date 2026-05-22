@@ -569,7 +569,9 @@ async function connect(scanAll = false) {
     log('navigator.bluetooth is undefined — browser does not support Web Bluetooth', 'err');
     return;
   }
-  const opts = { acceptAllDevices: true, optionalServices: [0x1826] };
+  var avail = await navigator.bluetooth.getAvailability();
+  log('BT hardware available: ' + avail, avail ? 'ok' : 'err');
+  const opts = { acceptAllDevices: true };
 
   try {
     setStatus('connecting', 'Scanning…');
@@ -970,7 +972,7 @@ function stopGraph() {
 
 // ─── Init ──────────────────────────────────────────────────────────────────
 updateSpeedDisplay(targetSpeed);
-log('App loaded v1.7 — bluetooth available: ' + (!!navigator.bluetooth), 'info');
+log('App loaded v1.8 — bluetooth available: ' + (!!navigator.bluetooth), 'info');
 log('Ready — click "Connect to Tritur" to begin.');
 if (!navigator.bluetooth) {
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
