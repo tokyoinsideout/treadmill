@@ -1142,8 +1142,27 @@ function stopGraph() {
 }
 
 // ─── Init ──────────────────────────────────────────────────────────────────
+
+// Speed gauge segments (moved from inline HTML script to avoid mobile WebKit issues)
+(function () {
+  const gauge = document.getElementById('speedGauge');
+  if (!gauge) return;
+  for (let i = 0; i < 20; i++) {
+    const d = document.createElement('div');
+    d.className = 'speed-gauge-seg';
+    gauge.appendChild(d);
+  }
+  const segs = gauge.querySelectorAll('.speed-gauge-seg');
+  function refreshGauge() {
+    const v      = parseFloat((speedNum && speedNum.textContent) || '0') || 0;
+    const filled = Math.max(0, Math.round(((v - 1) / 19) * 20));
+    segs.forEach((s, i) => s.classList.toggle('filled', i < filled));
+  }
+  if (speedNum) new MutationObserver(refreshGauge).observe(speedNum, { childList: true, characterData: true, subtree: true });
+})();
+
 updateSpeedDisplay(targetSpeed);
-log('App loaded v2.4 — ready.', 'info');
+log('App loaded v2.5 — ready.', 'info');
 log('Ready — click "Connect to Tritur" to begin.');
 if (!navigator.bluetooth) {
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);

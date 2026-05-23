@@ -641,6 +641,7 @@
 <header>
   <h1>TREADQUEST</h1>
   <p>※ THY TREADMILL AWAITS ※</p>
+  <p style="font-size:6px;color:#555;margin-top:4px;letter-spacing:1px">v2.5</p>
 </header>
 
 <!-- Browser compatibility warning (shown by app.js if BT unavailable) -->
@@ -849,30 +850,6 @@
   </div>
 </div>
 
-<!-- Speed gauge: build segments + drive from speedNum mutations -->
-<script>
-  (function () {
-    const gauge = document.getElementById('speedGauge');
-    for (let i = 0; i < 20; i++) {
-      const d = document.createElement('div');
-      d.className = 'speed-gauge-seg';
-      gauge.appendChild(d);
-    }
-    const segs = gauge.querySelectorAll('.speed-gauge-seg');
-
-    function refreshGauge() {
-      const speed = parseFloat(document.getElementById('speedNum').textContent) || 0;
-      // map 1–20 km/h → 0–20 filled segments
-      const filled = Math.max(0, Math.round(((speed - 1) / 19) * 20));
-      segs.forEach((s, i) => s.classList.toggle('filled', i < filled));
-    }
-
-    new MutationObserver(refreshGauge).observe(
-      document.getElementById('speedNum'),
-      { childList: true, characterData: true, subtree: true }
-    );
-  })();
-</script>
 
 <!-- Level-up overlay -->
 <div id="lvupOverlay">
@@ -880,6 +857,6 @@
   <div id="lvupLv">LV 2</div>
 </div>
 
-<script src="app.js?v=2.4"></script>
+<script src="app.js?v=2.5"></script>
 </body>
 </html>
