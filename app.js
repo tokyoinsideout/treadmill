@@ -73,6 +73,7 @@ let lastCmdTime  = 0;
 let rampTimer    = null;   // non-null while stop-ramp is in progress
 let isRamping    = false;
 let customChars  = [];     // [{uuid, svcUuid, char}] — all writable chars outside FTMS
+let liveSpeed    = 0;      // actual measured speed from treadmill notifications
 
 // ─── DOM ───────────────────────────────────────────────────────────────────
 const dot           = document.getElementById('dot');
@@ -321,6 +322,7 @@ function parseTreadmillData(dv) {
 function onTreadmillData(e) {
   const speed = parseTreadmillData(e.target.value);
   if (speed === null) return;
+  liveSpeed = speed;
   recordSpeed(speed);
   broadcastSpeed(speed, speed > 0.1);
   if (window.runnerApplyKmh) window.runnerApplyKmh(speed, speed > 0.1);
@@ -576,7 +578,7 @@ const ALL_OPTIONAL_SERVICES = [
 async function connect(scanAll = false) {
   if (!navigator.bluetooth) return;
   const opts = scanAll
-    ? { acceptAllDevices: true }
+    ? { acceptAllDevices: true, optionalServices: ALL_OPTIONAL_SERVICES }
     : { filters: [{ services: [0x1826] }] };
 
   try {
@@ -597,6 +599,7 @@ async function connect(scanAll = false) {
     enableControls(hasFTMS);
     updateSpeedDisplay(targetSpeed);
     startGraph();
+    startGame();
   } catch (err) {
     var name = err && err.name;
     if (name === 'NotFoundError') {
@@ -614,6 +617,7 @@ function onDisconnected() {
   broadcastSpeed(0, false);
   if (window.runnerApplyKmh) window.runnerApplyKmh(0, false);
   stopGraph();
+  stopGame();
   cancelRamp();
   setStatus('', 'Disconnected');
   showConnectedUI(false);
@@ -824,6 +828,165 @@ document.querySelectorAll('.preset-btn').forEach(btn => {
   window.runnerApplyKmh = applyKmh;
 })();
 
+// ─── XP & Quest System ─────────────────────────────────────────────────────
+const LEVEL_THRESHOLDS = [0, 100, 250, 500, 900, 1400, 2000, 2750, 3750, 5000];
+
+const QUEST_POOL = [
+  { id: 'run1m',  name: 'WARM UP',     goal: 'Run for 1 minute',     target: 60,   type: 'time'                },
+  { id: 'run3m',  name: 'KEEP GOING',  goal: 'Run for 3 minutes',    target: 180,  type: 'time'                },
+  { id: 'run5m',  name: 'FIVE MINS',   goal: 'Run for 5 minutes',    target: 300,  type: 'time'                },
+  { id: 'run10m', name: 'TENACIOUS',   goal: 'Run for 10 minutes',   target: 600,  type: 'time'                },
+  { id: 'spd8',   name: 'SPEED DEMON', goal: 'Reach 8 km/h',         target: 8,    type: 'speed'               },
+  { id: 'spd10',  name: 'FULL SPRINT', goal: 'Reach 10 km/h',        target: 10,   type: 'speed'               },
+  { id: 'spd12',  name: 'BLAZING',     goal: 'Reach 12 km/h',        target: 12,   type: 'speed'               },
+  { id: 'dst05',  name: 'HALF KAY',    goal: 'Run 0.5 km',           target: 0.5,  type: 'distance'            },
+  { id: 'dst1',   name: 'ONE KAY',     goal: 'Run 1.0 km',           target: 1.0,  type: 'distance'            },
+  { id: 'hold7',  name: 'ENDURANCE',   goal: 'Hold 7+ km/h for 30s', target: 30,   type: 'hold', thresh: 7     },
+  { id: 'hold9',  name: 'POWERHOUSE',  goal: 'Hold 9+ km/h for 20s', target: 20,   type: 'hold', thresh: 9     },
+];
+
+let totalXP       = parseInt(localStorage.getItem('tq_xp') || '0', 10);
+let activeQuests  = [];
+let questProgress = {};
+let questDone     = {};
+let sessionTime   = 0;
+let sessionDist   = 0;
+let holdStreaks   = {};
+let gameTimer     = null;
+
+function xpToLevel(xp) {
+  let lv = 1;
+  for (let i = 0; i < LEVEL_THRESHOLDS.length; i++) {
+    if (xp >= LEVEL_THRESHOLDS[i]) lv = i + 1; else break;
+  }
+  return lv;
+}
+
+function gainXP(amount) {
+  const prevLv = xpToLevel(totalXP);
+  totalXP += amount;
+  localStorage.setItem('tq_xp', String(totalXP));
+  const newLv = xpToLevel(totalXP);
+  if (newLv > prevLv) flashLevelUp(newLv);
+  refreshXPBar();
+}
+
+function refreshXPBar() {
+  const lv     = xpToLevel(totalXP);
+  const lvXP   = LEVEL_THRESHOLDS[lv - 1] || 0;
+  const nextXP = LEVEL_THRESHOLDS[lv]     || LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length - 1] * 2;
+  const pct    = Math.min(100, ((totalXP - lvXP) / (nextXP - lvXP)) * 100);
+  const lvEl   = document.getElementById('lvBadge');
+  const barEl  = document.getElementById('xpBarFill');
+  const lblEl  = document.getElementById('xpLabel');
+  const nxtEl  = document.getElementById('xpNextLabel');
+  if (!lvEl) return;
+  lvEl.textContent  = `LV ${lv}`;
+  barEl.style.width = `${pct}%`;
+  lblEl.textContent = `${totalXP} XP`;
+  nxtEl.textContent = lv >= LEVEL_THRESHOLDS.length ? 'MAX LV' : `NEXT: ${nextXP}`;
+}
+
+function pickQuests() {
+  const shuffled   = [...QUEST_POOL].sort(() => Math.random() - 0.5);
+  activeQuests     = shuffled.slice(0, 3);
+  questProgress    = {};
+  questDone        = {};
+  holdStreaks      = {};
+  for (const q of activeQuests) { questProgress[q.id] = 0; holdStreaks[q.id] = 0; }
+  renderQuests();
+}
+
+function formatQuestProg(q, prog) {
+  switch (q.type) {
+    case 'time':     return `${Math.floor(prog)}s / ${q.target}s`;
+    case 'speed':    return `${prog.toFixed(1)} / ${q.target} km/h`;
+    case 'distance': return `${prog.toFixed(2)} / ${q.target} km`;
+    case 'hold':     return `${Math.floor(prog)}s / ${q.target}s @ ${q.thresh}+`;
+    default:         return '';
+  }
+}
+
+function renderQuests() {
+  const list = document.getElementById('questList');
+  if (!list) return;
+  list.innerHTML = '';
+  for (const q of activeQuests) {
+    const done = !!questDone[q.id];
+    const prog = questProgress[q.id] || 0;
+    const pct  = Math.min(100, (prog / q.target) * 100);
+    const card = document.createElement('div');
+    card.className = `quest-card${done ? ' quest-done' : ''}`;
+    card.id = `qcard-${q.id}`;
+    card.innerHTML =
+      `<div class="quest-header"><span class="quest-name">${q.name}</span>` +
+      `<span class="quest-status">${done ? '✓ DONE' : formatQuestProg(q, prog)}</span></div>` +
+      `<div class="quest-goal">${q.goal}</div>` +
+      `<div class="quest-bar-bg"><div class="quest-bar-fill" style="width:${pct}%"></div></div>`;
+    list.appendChild(card);
+  }
+}
+
+function updateQuestProgress() {
+  let dirty = false;
+  for (const q of activeQuests) {
+    if (questDone[q.id]) continue;
+    let prog = questProgress[q.id] || 0;
+    switch (q.type) {
+      case 'time':     prog = sessionTime;                        break;
+      case 'speed':    prog = Math.max(prog, liveSpeed);         break;
+      case 'distance': prog = sessionDist;                       break;
+      case 'hold':
+        if (liveSpeed >= q.thresh) holdStreaks[q.id]++;
+        else holdStreaks[q.id] = 0;
+        prog = holdStreaks[q.id];
+        break;
+    }
+    questProgress[q.id] = prog;
+    if (prog >= q.target) { questDone[q.id] = true; flashQuestDone(q); }
+    dirty = true;
+  }
+  if (dirty) renderQuests();
+}
+
+function flashQuestDone(q) {
+  const card = document.getElementById(`qcard-${q.id}`);
+  if (card) { card.classList.add('quest-flash'); setTimeout(() => card.classList.remove('quest-flash'), 900); }
+  log(`Quest complete: ${q.name} ✓`, 'ok');
+}
+
+function flashLevelUp(lv) {
+  const ov = document.getElementById('lvupOverlay');
+  if (!ov) return;
+  document.getElementById('lvupLv').textContent = `LV ${lv}`;
+  ov.classList.add('active');
+  setTimeout(() => ov.classList.remove('active'), 2500);
+  log(`LEVEL UP! Now LV ${lv} 🎉`, 'ok');
+}
+
+function gameTick() {
+  if (!isRunning) return;
+  sessionTime++;
+  sessionDist += liveSpeed / 3600;
+  const xpGain = liveSpeed >= 10 ? 3 : liveSpeed >= 7 ? 2 : 1;
+  gainXP(xpGain);
+  updateQuestProgress();
+}
+
+function startGame() {
+  sessionTime = 0;
+  sessionDist = 0;
+  holdStreaks  = {};
+  pickQuests();
+  refreshXPBar();
+  if (gameTimer) clearInterval(gameTimer);
+  gameTimer = setInterval(gameTick, 1000);
+}
+
+function stopGame() {
+  if (gameTimer) { clearInterval(gameTimer); gameTimer = null; }
+}
+
 // ─── BroadcastChannel → pixel runner ──────────────────────────────────────
 const runnerChannel = (() => {
   try { return new BroadcastChannel('treadmill-speed'); } catch { return null; }
@@ -980,7 +1143,7 @@ function stopGraph() {
 
 // ─── Init ──────────────────────────────────────────────────────────────────
 updateSpeedDisplay(targetSpeed);
-log('App loaded v2.3 — ready.', 'info');
+log('App loaded v2.4 — ready.', 'info');
 log('Ready — click "Connect to Tritur" to begin.');
 if (!navigator.bluetooth) {
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);

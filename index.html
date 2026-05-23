@@ -534,6 +534,103 @@
       border: 2px solid rgba(255,255,255,0.15);
     }
 
+    /* ── XP bar ──────────────────────────────────────────────── */
+    .xp-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 6px;
+    }
+    .lv-badge {
+      font-size: 9px;
+      color: var(--gold);
+      white-space: nowrap;
+      min-width: 40px;
+      text-shadow: 2px 2px 0 #000;
+    }
+    .xp-bar-bg {
+      flex: 1;
+      height: 10px;
+      background: #000;
+      border: 2px solid var(--white);
+    }
+    .xp-bar-fill {
+      height: 100%;
+      background: var(--gold);
+      box-shadow: inset 0 -2px 0 var(--gold-dark);
+      transition: width 0.4s ease;
+      width: 0%;
+    }
+    .xp-meta {
+      display: flex;
+      justify-content: space-between;
+    }
+    .xp-small {
+      font-size: 6px;
+      color: var(--white-dim);
+      letter-spacing: 0.5px;
+    }
+
+    /* ── Quest panel ─────────────────────────────────────────── */
+    .quest-card {
+      border: 2px solid rgba(255,255,255,0.15);
+      padding: 8px;
+      margin-bottom: 8px;
+      background: var(--navy-deep);
+    }
+    .quest-card:last-child { margin-bottom: 0; }
+    .quest-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 3px;
+    }
+    .quest-name   { font-size: 7px; color: var(--white);     letter-spacing: 1px; }
+    .quest-status { font-size: 6px; color: var(--white-dim); white-space: nowrap; margin-left: 6px; }
+    .quest-goal   { font-size: 6px; color: var(--white-dim); letter-spacing: 0.5px; margin-bottom: 5px; }
+    .quest-bar-bg { height: 5px; background: #000; border: 1px solid rgba(255,255,255,0.2); }
+    .quest-bar-fill { height: 100%; background: var(--cyan); transition: width 0.5s ease; }
+    .quest-done .quest-name   { color: var(--green); }
+    .quest-done .quest-status { color: var(--green); }
+    .quest-done .quest-bar-fill { background: var(--green); }
+    .quest-done { border-color: rgba(95,196,109,0.5); }
+    @keyframes quest-flash {
+      0%,100% { background: var(--navy-deep); }
+      50%     { background: #0a3015; box-shadow: 0 0 0 2px var(--green); }
+    }
+    .quest-flash { animation: quest-flash 0.45s ease 2; }
+
+    /* ── Level-up overlay ────────────────────────────────────── */
+    #lvupOverlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.88);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.25s;
+    }
+    #lvupOverlay.active { opacity: 1; }
+    @keyframes lvup-pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+    #lvupMsg {
+      font-size: 20px;
+      color: var(--gold);
+      text-shadow: 0 0 24px var(--gold), 4px 4px 0 #000;
+      letter-spacing: 4px;
+      animation: lvup-pulse 0.5s steps(2) 4;
+    }
+    #lvupLv {
+      font-size: 48px;
+      color: var(--white);
+      text-shadow: 6px 6px 0 #000;
+      margin-top: 20px;
+      letter-spacing: 4px;
+    }
+
     /* ── Utility ─────────────────────────────────────────────── */
     .hidden { display: none !important; }
   </style>
@@ -570,6 +667,19 @@
   <!-- FTMS feature pills (populated on connect) -->
   <div class="features-row" id="featuresRow"></div>
 
+  <!-- XP / Level strip -->
+  <div class="px-panel">
+    <div class="px-panel-header">PLAYER STATUS</div>
+    <div class="xp-meta">
+      <span class="xp-small" id="xpLabel">0 XP</span>
+      <span class="xp-small" id="xpNextLabel">NEXT: 100</span>
+    </div>
+    <div class="xp-row">
+      <div class="lv-badge" id="lvBadge">LV 1</div>
+      <div class="xp-bar-bg"><div class="xp-bar-fill" id="xpBarFill"></div></div>
+    </div>
+  </div>
+
   <!-- Speed panel -->
   <div class="px-panel">
     <div class="px-panel-header">SPEED CONTROL</div>
@@ -604,6 +714,12 @@
       <button class="btn-tiny" id="btnReset" disabled>RESET MACHINE</button>
       <button class="btn-tiny" id="btnDisconnect">DISCONNECT</button>
     </div>
+  </div>
+
+  <!-- Active Quests -->
+  <div class="px-panel">
+    <div class="px-panel-header">ACTIVE QUESTS</div>
+    <div id="questList"></div>
   </div>
 
 </div>
@@ -758,6 +874,12 @@
   })();
 </script>
 
-<script src="app.js?v=2.3"></script>
+<!-- Level-up overlay -->
+<div id="lvupOverlay">
+  <div id="lvupMsg">LEVEL UP!</div>
+  <div id="lvupLv">LV 2</div>
+</div>
+
+<script src="app.js?v=2.4"></script>
 </body>
 </html>
